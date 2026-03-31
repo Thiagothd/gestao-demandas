@@ -1,30 +1,56 @@
-export type TaskStatus = 'Pendente' | 'Em Andamento' | 'Concluído';
+export type Role = 'manager' | 'employee';
 
-export interface Subtask {
+export interface Profile {
   id: string;
-  title: string;
-  status: TaskStatus;
-  note?: string;
+  name: string;
+  role: Role;
 }
 
-export interface Task {
+export type DemandStatus = 'A Fazer' | 'Em Andamento' | 'Concluído';
+export type DemandPriority = 'Baixa' | 'Média' | 'Alta' | 'Urgente';
+
+export interface Comment {
+  id: string;
+  demand_id: string;
+  user_name: string;
+  content: string;
+  created_at: string;
+}
+
+export interface ChecklistSubItem {
   id: string;
   title: string;
-  subtasks: Subtask[];
+  completed: boolean;
+  in_progress?: boolean;
+  logged_hours?: number;
+  observation?: string;
+  completed_at?: string;
+}
+
+export interface ChecklistItem {
+  id: string;
+  title: string;
+  isGroup: boolean;
+  subItems: ChecklistSubItem[];
 }
 
 export interface Demand {
   id: string;
-  client: string;
-  startDate: string;
-  responsible: string;
-  notes: string;
-  tasks: Task[];
-  createdAt: string;
-}
-
-export interface FilterOptions {
-  client: string;
-  date: string;
-  status: TaskStatus | 'Todos';
+  ticket_id?: number;
+  title: string;
+  description: string;
+  client?: string;
+  requester?: string;
+  request_type?: string;
+  assigned_to: string;
+  status: DemandStatus;
+  priority: DemandPriority;
+  sla: string;
+  checklist?: ChecklistItem[];
+  logged_hours?: number;
+  final_observations?: string;
+  completed_at?: string;
+  created_at: string;
+  // For UI convenience
+  assignee?: Profile;
 }
