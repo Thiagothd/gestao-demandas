@@ -243,7 +243,7 @@ export default function Dashboard() {
     <div className="space-y-6 h-full flex flex-col">
       {/* Header Actions */}
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-zinc-100">Quadro Kanban</h2>
+        <h2 className="text-2xl font-bold text-zinc-100">Locação Web</h2>
         <button
           onClick={() => {
             setDemandToEdit(null);
@@ -368,14 +368,14 @@ export default function Dashboard() {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-full sm:w-auto px-3 py-1.5 bg-[#111111] border border-zinc-800 rounded-md text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-all"
+              className="w-full sm:w-auto px-3 py-1.5 bg-[#111111] border border-zinc-800 rounded-md text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-all [color-scheme:dark]"
             />
             <span className="text-zinc-500 text-sm">até</span>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="w-full sm:w-auto px-3 py-1.5 bg-[#111111] border border-zinc-800 rounded-md text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-all"
+              className="w-full sm:w-auto px-3 py-1.5 bg-[#111111] border border-zinc-800 rounded-md text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-all [color-scheme:dark]"
             />
           </div>
 

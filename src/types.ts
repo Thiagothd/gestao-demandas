@@ -35,6 +35,14 @@ export interface ChecklistItem {
   subItems: ChecklistSubItem[];
 }
 
+export interface Attachment {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  url: string;
+}
+
 export interface Demand {
   id: string;
   ticket_id?: number;
@@ -48,6 +56,7 @@ export interface Demand {
   priority: DemandPriority;
   sla: string;
   checklist?: ChecklistItem[];
+  attachments?: Attachment[];
   logged_hours?: number;
   final_observations?: string;
   completed_at?: string;

@@ -23,10 +23,13 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
   const [sla, setSla] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [quickChecklistInput, setQuickChecklistInput] = useState('');
   const [showSmartImport, setShowSmartImport] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
   
   const [employees, setEmployees] = useState<Profile[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -45,6 +48,7 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
         setSla(demandToEdit.sla ? new Date(demandToEdit.sla).toISOString().split('T')[0] : '');
         setAssignedTo(demandToEdit.assigned_to || '');
         setChecklistItems(demandToEdit.checklist || []);
+        setAttachments(demandToEdit.attachments || []);
       } else {
         // Reset form
         setTitle('');
@@ -56,6 +60,7 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
         setSla('');
         setAssignedTo('');
         setChecklistItems([]);
+        setAttachments([]);
         setShowSmartImport(true);
       }
       setErrorMessage(null);
@@ -90,7 +95,8 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
         priority,
         sla: sla || null,
         assigned_to: assignedTo || null,
-        checklist: checklistItems.length > 0 ? checklistItems : null
+        checklist: checklistItems.length > 0 ? checklistItems : null,
+        attachments: attachments.length > 0 ? attachments : null
       };
 
       let demandError;
@@ -122,7 +128,7 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
         } catch (e) {
           errorDetails = demandError.message || String(demandError);
         }
-        setErrorMessage(`Erro do Supabase:\n${errorDetails}\n\nDica: Verifique se você rodou o script SQL para adicionar as colunas 'client', 'requester', 'request_type' e 'checklist' na tabela demands.`);
+        setErrorMessage(`Erro do Supabase:\n${errorDetails}\n\nDica: Verifique se você rodou o script SQL para adicionar as colunas 'client', 'requester', 'request_type', 'checklist' e 'attachments' na tabela demands.`);
         setIsSubmitting(false);
         return;
       }
@@ -359,6 +365,60 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
     }
   };
 
+  const handleAttachmentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploadingFile(true);
+    setErrorMessage(null);
+
+    try {
+      const newAttachments: Attachment[] = [];
+      
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${crypto.randomUUID()}.${fileExt}`;
+        const filePath = `demand-attachments/${fileName}`;
+
+        // Ensure the bucket exists or handle the error gracefully
+        const { error: uploadError } = await supabase.storage
+          .from('attachments')
+          .upload(filePath, file);
+
+        if (uploadError) {
+          throw uploadError;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('attachments')
+          .getPublicUrl(filePath);
+
+        newAttachments.push({
+          id: crypto.randomUUID(),
+          name: file.name,
+          size: file.size,
+          type: file.type || 'application/octet-stream',
+          url: publicUrl
+        });
+      }
+
+      setAttachments(prev => [...prev, ...newAttachments]);
+    } catch (err: any) {
+      console.error('Error uploading attachment:', err);
+      setErrorMessage(`Erro ao fazer upload do anexo: ${err.message}. Certifique-se de que o bucket 'attachments' existe no Supabase e é público.`);
+    } finally {
+      setIsUploadingFile(false);
+      if (attachmentInputRef.current) {
+        attachmentInputRef.current.value = '';
+      }
+    }
+  };
+
+  const removeAttachment = (attachmentId: string) => {
+    setAttachments(prev => prev.filter(a => a.id !== attachmentId));
+  };
+
   const removeGroup = (groupId: string) => {
     setChecklistItems(prev => prev.filter(g => g.id !== groupId));
   };
@@ -529,6 +589,73 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
                 className="w-full bg-[#0A0A0A] border border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-100 focus:outline-none focus:border-indigo-500 transition-colors resize-none"
                 placeholder="Detalhes da demanda..."
               />
+            </div>
+
+            {/* Attachments Section */}
+            <div className="space-y-2 mt-4">
+              <label className="text-sm font-medium text-zinc-300 flex items-center gap-2">
+                <LinkIcon className="w-4 h-4 text-zinc-500" />
+                Anexos
+              </label>
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="file"
+                    multiple
+                    ref={attachmentInputRef}
+                    onChange={handleAttachmentUpload}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => attachmentInputRef.current?.click()}
+                    disabled={isUploadingFile}
+                    className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg text-sm font-medium transition-colors border border-zinc-700/50 flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {isUploadingFile ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Upload className="w-4 h-4" />
+                    )}
+                    {isUploadingFile ? 'Enviando...' : 'Adicionar Anexos'}
+                  </button>
+                </div>
+                
+                {attachments.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                    {attachments.map(attachment => (
+                      <div key={attachment.id} className="flex items-center justify-between bg-zinc-800/30 border border-zinc-700/50 rounded-lg p-2.5 group">
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          <div className="w-8 h-8 rounded bg-zinc-800 flex items-center justify-center shrink-0">
+                            <LinkIcon className="w-4 h-4 text-zinc-400" />
+                          </div>
+                          <div className="flex flex-col overflow-hidden">
+                            <a 
+                              href={attachment.url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-sm font-medium text-zinc-200 hover:text-indigo-400 truncate transition-colors"
+                            >
+                              {attachment.name}
+                            </a>
+                            <span className="text-xs text-zinc-500">
+                              {(attachment.size / 1024).toFixed(1)} KB
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeAttachment(attachment.id)}
+                          className="p-1.5 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                          title="Remover anexo"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="space-y-2 mt-4">

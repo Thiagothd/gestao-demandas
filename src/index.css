@@ -5,6 +5,15 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
+@layer base {
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"],
+  input[type="month"] {
+    color-scheme: dark;
+  }
+}
+
 @layer utilities {
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;

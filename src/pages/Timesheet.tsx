@@ -562,14 +562,14 @@ export default function Timesheet() {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-full sm:w-auto px-3 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-all"
+              className="w-full sm:w-auto px-3 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-all [color-scheme:dark]"
             />
             <span className="text-zinc-500 text-sm">até</span>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="w-full sm:w-auto px-3 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-all"
+              className="w-full sm:w-auto px-3 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-all [color-scheme:dark]"
             />
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
@@ -730,7 +730,7 @@ export default function Timesheet() {
                     required
                     value={newEntry.date}
                     onChange={e => setNewEntry({...newEntry, date: e.target.value})}
-                    className="w-full px-3 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                    className="w-full px-3 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all [color-scheme:dark]"
                   />
                 </div>
                 <div className="space-y-2">
@@ -838,7 +838,7 @@ export default function Timesheet() {
                     required
                     value={editingEntry.date}
                     onChange={e => setEditingEntry({...editingEntry, date: e.target.value})}
-                    className="w-full px-3 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                    className="w-full px-3 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all [color-scheme:dark]"
                   />
                 </div>
                 <div className="space-y-2">

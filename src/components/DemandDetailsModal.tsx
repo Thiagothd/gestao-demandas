@@ -702,6 +702,41 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
             </div>
           )}
 
+          {/* Attachments */}
+          {demand.attachments && demand.attachments.length > 0 && (
+            <>
+              <div className="h-px bg-zinc-800/50 w-full"></div>
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
+                  <LinkIcon className="w-4 h-4 text-zinc-400" /> Anexos
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {demand.attachments.map(attachment => (
+                    <a
+                      key={attachment.id}
+                      href={attachment.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 bg-[#0A0A0A] border border-zinc-800/80 hover:border-indigo-500/50 hover:bg-zinc-800/50 rounded-xl p-3 transition-all group"
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-zinc-800 flex items-center justify-center shrink-0 group-hover:bg-indigo-500/20 transition-colors">
+                        <LinkIcon className="w-5 h-5 text-zinc-400 group-hover:text-indigo-400 transition-colors" />
+                      </div>
+                      <div className="flex flex-col overflow-hidden">
+                        <span className="text-sm font-medium text-zinc-200 group-hover:text-indigo-400 truncate transition-colors">
+                          {attachment.name}
+                        </span>
+                        <span className="text-xs text-zinc-500">
+                          {(attachment.size / 1024).toFixed(1)} KB
+                        </span>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
           {/* Checklist */}
           {demand.checklist && demand.checklist.length > 0 && (
             <>
