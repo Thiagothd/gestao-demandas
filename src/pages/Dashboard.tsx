@@ -4,13 +4,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { Demand, DemandStatus } from '../types';
 import DemandModal from '../components/DemandModal';
 import DemandDetailsModal from '../components/DemandDetailsModal';
-import { Plus, Calendar, Search, Filter, CheckSquare, Building2, User } from 'lucide-react';
+import { Plus, Calendar, Search, Filter, CheckSquare, Building2, User, X } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 
 const COLUMNS: DemandStatus[] = ['A Fazer', 'Em Andamento', 'Concluído'];
 
 const Avatar = ({ name }: { name?: string }) => {
-  if (!name) return <div className="w-6 h-6 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-[10px] text-zinc-500 font-medium">?</div>;
+  if (!name) return <div className="w-6 h-6 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-[10px] text-zinc-400 font-medium tracking-wide">?</div>;
   const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   return (
     <div className="w-6 h-6 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-[10px] text-indigo-300 font-medium" title={name}>
@@ -72,6 +72,25 @@ export default function Dashboard() {
     });
   };
 
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setSelectedAssignee('all');
+    setSelectedClient('all');
+    setSelectedRequester('all');
+    setDateFilterType('created_at');
+    setStartDate('');
+    setEndDate('');
+    setAppliedFilters({
+      searchQuery: '',
+      selectedAssignee: 'all',
+      selectedClient: 'all',
+      selectedRequester: 'all',
+      dateFilterType: 'created_at',
+      startDate: '',
+      endDate: ''
+    });
+  };
+
   useEffect(() => {
     fetchDemands();
   }, [profile]);
@@ -83,10 +102,6 @@ export default function Dashboard() {
     let query = supabase
       .from('demands')
       .select('*, assignee:profiles!assigned_to(id, name, role)');
-
-    if (profile.role === 'employee') {
-      query = query.eq('assigned_to', profile.id);
-    }
 
     const { data, error } = await query.order('created_at', { ascending: false });
 
@@ -229,18 +244,16 @@ export default function Dashboard() {
       {/* Header Actions */}
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-zinc-100">Quadro Kanban</h2>
-        {profile?.role === 'manager' && (
-          <button
-            onClick={() => {
-              setDemandToEdit(null);
-              setIsModalOpen(true);
-            }}
-            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20"
-          >
-            <Plus className="w-4 h-4" />
-            Nova Demanda
-          </button>
-        )}
+        <button
+          onClick={() => {
+            setDemandToEdit(null);
+            setIsModalOpen(true);
+          }}
+          className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20"
+        >
+          <Plus className="w-4 h-4" />
+          Nova Demanda
+        </button>
       </div>
 
       {/* Filters Bar */}
@@ -302,12 +315,36 @@ export default function Dashboard() {
               ))}
             </select>
           </div>
-          <button
-            onClick={handleApplyFilters}
-            className="w-full sm:w-auto px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20 shrink-0"
-          >
-            Buscar
-          </button>
+          <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+            <button
+              onClick={handleClearFilters}
+              className="flex-1 sm:flex-none px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg text-sm font-medium transition-colors border border-zinc-700/50 flex items-center justify-center gap-2"
+              title="Limpar todos os filtros"
+            >
+              <X className="w-4 h-4" />
+              <span className="hidden sm:inline">Limpar</span>
+            </button>
+            <button
+              onClick={() => {
+                if (profile?.id) {
+                  setSelectedAssignee(profile.id);
+                  setAppliedFilters(prev => ({ ...prev, selectedAssignee: profile.id }));
+                }
+              }}
+              className="flex-1 sm:flex-none px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg text-sm font-medium transition-colors border border-zinc-700/50 flex items-center justify-center gap-2"
+              title="Filtrar pelas minhas demandas"
+            >
+              <User className="w-4 h-4" />
+              <span className="hidden sm:inline">Minhas Demandas</span>
+              <span className="sm:hidden">Minhas</span>
+            </button>
+            <button
+              onClick={handleApplyFilters}
+              className="flex-1 sm:flex-none px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20"
+            >
+              Buscar
+            </button>
+          </div>
         </div>
 
         {/* Date Filters */}
@@ -345,7 +382,7 @@ export default function Dashboard() {
           {(startDate || endDate) && (
             <button
               onClick={() => { setStartDate(''); setEndDate(''); }}
-              className="text-xs text-zinc-400 hover:text-zinc-200 transition-colors ml-auto sm:ml-2"
+              className="text-xs font-medium tracking-wide text-zinc-400 hover:text-zinc-200 transition-colors ml-auto sm:ml-2"
             >
               Limpar datas
             </button>
@@ -369,7 +406,7 @@ export default function Dashboard() {
                     {column === 'Concluído' && <div className="w-2 h-2 rounded-full bg-emerald-500" />}
                     {column}
                   </h3>
-                  <span className="px-2.5 py-1 bg-zinc-800/50 text-zinc-400 rounded-lg text-xs font-medium border border-zinc-700/50">
+                  <span className="px-2.5 py-1 bg-zinc-800/50 text-zinc-400 rounded-lg text-xs font-medium tracking-wide border border-zinc-700/50">
                     {columnDemands.length}
                   </span>
                 </div>
@@ -389,7 +426,7 @@ export default function Dashboard() {
                       ) : (
                         columnDemands.map((demand, index) => {
                           const isOverdue = demand.sla && new Date(demand.sla).getTime() < new Date().setHours(0,0,0,0);
-                          const slaColor = isOverdue && demand.status !== 'Concluído' ? 'text-red-400' : 'text-zinc-500';
+                          const slaColor = isOverdue && demand.status !== 'Concluído' ? 'text-red-400' : 'text-zinc-400 tracking-wide';
 
                           return (
                             // @ts-expect-error React 19 type incompatibility
@@ -412,12 +449,12 @@ export default function Dashboard() {
                                           #{demand.ticket_id}
                                         </span>
                                       )}
-                                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-zinc-800/80 text-zinc-400 border border-zinc-700/50 truncate max-w-[120px]">
+                                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-zinc-800/80 text-zinc-300 tracking-wide border border-zinc-700/50 truncate max-w-[120px]">
                                         {demand.client || 'Sem cliente'}
                                       </span>
-                                      {demand.request_type && (
+                                      {demand.assignee?.name && (
                                         <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 w-fit truncate max-w-[120px]">
-                                          {demand.request_type}
+                                          {demand.assignee.name}
                                         </span>
                                       )}
                                     </div>
@@ -430,12 +467,12 @@ export default function Dashboard() {
                                   
                                   <div className="flex items-center justify-between mt-auto">
                                     <div className="flex items-center gap-3">
-                                      <div className={`flex items-center gap-1.5 text-xs font-medium ${slaColor}`}>
+                                      <div className={`flex items-center gap-1.5 text-xs font-medium tracking-wide ${slaColor}`}>
                                         <Calendar className="w-3.5 h-3.5" />
                                         <span>{demand.sla && !isNaN(new Date(demand.sla).getTime()) ? new Date(demand.sla).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) : 'Sem prazo'}</span>
                                       </div>
                                       {demand.checklist && demand.checklist.length > 0 && (
-                                        <div className="flex items-center gap-1.5 text-xs text-zinc-500 font-medium">
+                                      <div className="flex items-center gap-1.5 text-xs text-zinc-400 font-medium tracking-wide">
                                           <CheckSquare className="w-3.5 h-3.5" />
                                           <span>{demand.checklist.reduce((acc, g) => acc + g.subItems.filter(s => s.completed).length, 0)}/{demand.checklist.reduce((acc, g) => acc + g.subItems.length, 0)}</span>
                                         </div>

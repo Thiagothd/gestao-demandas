@@ -355,7 +355,7 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-[#111111] border border-zinc-800 rounded-2xl w-full max-w-3xl shadow-2xl flex flex-col max-h-[90vh]">
+      <div className="bg-[#111111] border border-zinc-800 rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[90vh]">
         <div className="flex justify-between items-center p-6 border-b border-zinc-800 shrink-0">
           <h2 className="text-xl font-semibold text-zinc-100">{demandToEdit ? 'Editar Demanda' : 'Nova Demanda'}</h2>
           <button 
@@ -540,8 +540,8 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
                     <div className="absolute inset-0 flex items-center">
                       <div className="w-full border-t border-zinc-800"></div>
                     </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-[#1A1A1A] px-2 text-zinc-500">Ou digite/cole o texto</span>
+                    <div className="relative flex justify-center text-[10px] font-medium tracking-wider uppercase">
+                      <span className="bg-[#1A1A1A] px-2 text-zinc-400">Ou digite/cole o texto</span>
                     </div>
                   </div>
 
@@ -584,7 +584,7 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
                       <CheckSquare className="w-4 h-4 text-indigo-400" />
                       Checklist Gerado
                     </h4>
-                    <span className="text-xs text-zinc-500 bg-zinc-800/50 px-2 py-1 rounded-md">
+                    <span className="text-xs font-medium text-zinc-400 tracking-wide bg-zinc-800/50 px-2 py-1 rounded-md">
                       {checklistItems.reduce((acc, group) => acc + group.subItems.length, 0)} itens
                     </span>
                   </div>

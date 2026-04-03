@@ -34,6 +34,12 @@ export default function Login() {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            data: {
+              name: username,
+              role: 'employee'
+            }
+          }
         });
         if (error) throw error;
 
@@ -51,7 +57,17 @@ export default function Login() {
         }
       }
     } catch (err: any) {
-      setError(err.message || 'Erro ao processar a solicitação. Verifique os dados.');
+      let errorMessage = err.message || 'Erro ao processar a solicitação. Verifique os dados.';
+      
+      if (errorMessage.includes('User already registered') || errorMessage.includes('already exists')) {
+        errorMessage = 'Este usuário já existe. Por favor, faça login ou escolha outro nome de usuário.';
+      } else if (errorMessage.includes('Invalid login credentials')) {
+        errorMessage = 'Usuário ou senha incorretos.';
+      } else if (errorMessage.includes('Password should be at least')) {
+        errorMessage = 'A senha deve ter pelo menos 6 caracteres.';
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

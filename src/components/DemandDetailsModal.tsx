@@ -143,7 +143,15 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
       if (g.id === groupId) {
         return {
           ...g,
-          subItems: g.subItems.map(s => s.id === subItemId ? { ...s, completed: false, in_progress: false, logged_hours: undefined, observation: undefined, completed_at: undefined } : s)
+          subItems: g.subItems.map(s => s.id === subItemId ? { 
+            ...s, 
+            completed: false, 
+            in_progress: false, 
+            logged_hours: undefined, 
+            observation: undefined, 
+            completed_at: undefined,
+            completed_by: undefined
+          } : s)
         };
       }
       return g;
@@ -178,7 +186,8 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
             in_progress: false,
             logged_hours: hours, 
             observation: subItemObservation || undefined,
-            completed_at: new Date().toISOString()
+            completed_at: new Date().toISOString(),
+            completed_by: profile?.id
           } : s)
         };
       }
@@ -220,7 +229,15 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
             ...s, 
             completed: forceComplete,
             in_progress: false,
-            ...(forceComplete ? { completed_at: new Date().toISOString() } : { logged_hours: undefined, observation: undefined, completed_at: undefined })
+            ...(forceComplete ? { 
+              completed_at: new Date().toISOString(),
+              completed_by: profile?.id
+            } : { 
+              logged_hours: undefined, 
+              observation: undefined, 
+              completed_at: undefined,
+              completed_by: undefined
+            })
           }))
         };
       }
@@ -344,7 +361,7 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-[#111111] border border-zinc-800 rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]">
+      <div className="bg-[#111111] border border-zinc-800 rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[90vh]">
         
         {/* Header */}
         <div className="flex justify-between items-start p-6 border-b border-zinc-800/80 shrink-0">
@@ -515,23 +532,23 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
           {/* Metadata Grid */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <span className="text-xs font-medium text-zinc-500 flex items-center gap-1.5"><Building2 className="w-3.5 h-3.5"/> Cliente</span>
+              <span className="text-xs font-medium text-zinc-400 tracking-wide flex items-center gap-1.5"><Building2 className="w-3.5 h-3.5"/> Cliente</span>
               <p className="text-sm text-zinc-200 font-medium">{demand.client || 'Não informado'}</p>
             </div>
             <div className="space-y-1.5">
-              <span className="text-xs font-medium text-zinc-500 flex items-center gap-1.5"><User className="w-3.5 h-3.5"/> Solicitante</span>
+              <span className="text-xs font-medium text-zinc-400 tracking-wide flex items-center gap-1.5"><User className="w-3.5 h-3.5"/> Solicitante</span>
               <p className="text-sm text-zinc-200 font-medium">{demand.requester || 'Não informado'}</p>
             </div>
             <div className="space-y-1.5">
-              <span className="text-xs font-medium text-zinc-500 flex items-center gap-1.5"><Building2 className="w-3.5 h-3.5"/> Tipo de Solicitação</span>
+              <span className="text-xs font-medium text-zinc-400 tracking-wide flex items-center gap-1.5"><Building2 className="w-3.5 h-3.5"/> Tipo de Solicitação</span>
               <p className="text-sm text-zinc-200 font-medium">{demand.request_type || 'Não informado'}</p>
             </div>
             <div className="space-y-1.5">
-              <span className="text-xs font-medium text-zinc-500 flex items-center gap-1.5"><User className="w-3.5 h-3.5"/> Desenvolvedor</span>
+              <span className="text-xs font-medium text-zinc-400 tracking-wide flex items-center gap-1.5"><User className="w-3.5 h-3.5"/> Desenvolvedor</span>
               <p className="text-sm text-zinc-200 font-medium">{demand.assignee?.name || 'Não atribuído'}</p>
             </div>
             <div className="space-y-1.5">
-              <span className="text-xs font-medium text-zinc-500 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5"/> Prazo (SLA)</span>
+              <span className="text-xs font-medium text-zinc-400 tracking-wide flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5"/> Prazo (SLA)</span>
               <p className="text-sm text-zinc-200 font-medium">{demand.sla && !isNaN(new Date(demand.sla).getTime()) ? new Date(demand.sla).toLocaleDateString('pt-BR') : 'Sem prazo'}</p>
             </div>
           </div>
@@ -547,19 +564,19 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
                 <div className="space-y-4">
                   {demand.completed_at && (
                     <div className="space-y-1.5">
-                      <span className="text-xs font-medium text-zinc-500 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5"/> Data de Conclusão</span>
+                      <span className="text-xs font-medium text-zinc-400 tracking-wide flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5"/> Data de Conclusão</span>
                       <p className="text-sm text-zinc-200 font-medium">{new Date(demand.completed_at).toLocaleDateString('pt-BR')}</p>
                     </div>
                   )}
                   {demand.logged_hours && (
                     <div className="space-y-1.5">
-                      <span className="text-xs font-medium text-zinc-500 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5"/> Horas Gastas</span>
+                      <span className="text-xs font-medium text-zinc-400 tracking-wide flex items-center gap-1.5"><Clock className="w-3.5 h-3.5"/> Horas Gastas</span>
                       <p className="text-sm text-zinc-200 font-medium">{demand.logged_hours}h</p>
                     </div>
                   )}
                   {demand.final_observations && (
                     <div className="space-y-1.5">
-                      <span className="text-xs font-medium text-zinc-500 flex items-center gap-1.5"><MessageSquare className="w-3.5 h-3.5"/> Observações</span>
+                      <span className="text-xs font-medium text-zinc-400 tracking-wide flex items-center gap-1.5"><MessageSquare className="w-3.5 h-3.5"/> Observações</span>
                       <div className="bg-[#0A0A0A] border border-zinc-800/80 rounded-lg p-3 text-sm text-zinc-300 whitespace-pre-wrap leading-relaxed">
                         {demand.final_observations}
                       </div>
@@ -593,7 +610,7 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
                   <h3 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
                     <CheckSquare className="w-4 h-4 text-zinc-400" /> Checklist
                   </h3>
-                  <span className="text-xs font-medium text-zinc-500 bg-zinc-800/50 px-2 py-1 rounded-md">
+                  <span className="text-xs font-medium text-zinc-400 tracking-wide bg-zinc-800/50 px-2 py-1 rounded-md">
                     {demand.checklist.reduce((acc, g) => acc + g.subItems.filter(s => s.completed).length, 0)} de {demand.checklist.reduce((acc, g) => acc + g.subItems.length, 0)} concluídas
                   </span>
                 </div>
@@ -651,7 +668,7 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
                               {isGroupCompleted ? 'Concluído' : isGroupInProgress ? 'Em Andamento' : 'Pendente'}
                             </span>
                           </div>
-                          <span className="text-xs font-medium text-zinc-500 bg-zinc-800/50 px-2 py-1 rounded-md">
+                          <span className="text-xs font-medium text-zinc-400 tracking-wide bg-zinc-800/50 px-2 py-1 rounded-md">
                             {group.subItems.filter(s => s.completed).length}/{group.subItems.length}
                           </span>
                         </div>
@@ -797,7 +814,7 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
                   <div key={comment.id} className="bg-[#0A0A0A] border border-zinc-800/80 rounded-xl p-3 space-y-1">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-indigo-400">{comment.user_name}</span>
-                      <span className="text-[10px] text-zinc-500">
+                      <span className="text-[10px] font-medium text-zinc-400 tracking-wide">
                         {new Date(comment.created_at).toLocaleString('pt-BR', { 
                           day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' 
                         })}

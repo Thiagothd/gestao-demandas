@@ -4,6 +4,8 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Navbar from './components/Navbar';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import Timesheet from './pages/Timesheet';
+import Overtime from './pages/Overtime';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, profile, isLoading } = useAuth();
@@ -43,10 +45,36 @@ function AppRoutes() {
         path="/"
         element={
           <ProtectedRoute>
-            <div className="min-h-screen bg-[#0A0A0A] font-sans text-zinc-100 selection:bg-indigo-500/30 flex flex-col">
+            <div className="min-h-screen bg-[#0A0A0A] font-sans text-zinc-100 selection:bg-indigo-500/30 flex flex-col antialiased">
               <Navbar />
-              <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
+              <main className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1">
                 <Dashboard />
+              </main>
+            </div>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/timesheet"
+        element={
+          <ProtectedRoute>
+            <div className="min-h-screen bg-[#0A0A0A] font-sans text-zinc-100 selection:bg-indigo-500/30 flex flex-col antialiased">
+              <Navbar />
+              <main className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1">
+                <Timesheet />
+              </main>
+            </div>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/overtime"
+        element={
+          <ProtectedRoute>
+            <div className="min-h-screen bg-[#0A0A0A] font-sans text-zinc-100 selection:bg-indigo-500/30 flex flex-col antialiased">
+              <Navbar />
+              <main className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1">
+                <Overtime />
               </main>
             </div>
           </ProtectedRoute>

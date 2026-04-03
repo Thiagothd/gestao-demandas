@@ -25,6 +25,7 @@ export interface ChecklistSubItem {
   logged_hours?: number;
   observation?: string;
   completed_at?: string;
+  completed_by?: string;
 }
 
 export interface ChecklistItem {
