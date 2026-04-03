@@ -269,7 +269,7 @@ export default function Overtime() {
               reason: data.thresholdActivity || 'Atividade não identificada',
               type: type,
               hours: hoursStr,
-              observation: `Total trabalhado no dia: ${Math.floor(data.minutes / 60)}h${(data.minutes % 60).toString().padStart(2, '0')}m`,
+              observation: '',
               created_at: new Date().toISOString()
             });
           }

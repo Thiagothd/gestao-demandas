@@ -18,10 +18,13 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
   const [completingSubItem, setCompletingSubItem] = useState<{groupId: string, subItemId: string} | null>(null);
   const [subItemHours, setSubItemHours] = useState('');
   const [subItemObservation, setSubItemObservation] = useState('');
+  const [subItemDate, setSubItemDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [expandedSubItems, setExpandedSubItems] = useState<Record<string, boolean>>({});
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showReopenConfirm, setShowReopenConfirm] = useState(false);
+  const [reopeningItem, setReopeningItem] = useState<{groupId: string, subItemId: string} | null>(null);
 
   const toggleGroup = (groupId: string, currentState: boolean) => {
     setExpandedGroups(prev => ({
@@ -34,6 +37,7 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
   const [showFinishForm, setShowFinishForm] = useState(false);
   const [loggedHours, setLoggedHours] = useState<string>('');
   const [finalObservations, setFinalObservations] = useState('');
+  const [finishDate, setFinishDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
@@ -45,6 +49,9 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
       setCompletingSubItem(null);
       setSubItemHours('');
       setSubItemObservation('');
+      setSubItemDate(new Date().toISOString().split('T')[0]);
+      setShowReopenConfirm(false);
+      setReopeningItem(null);
     }
   }, [isOpen, demand]);
 
@@ -132,11 +139,19 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
         setCompletingSubItem({ groupId, subItemId });
         setSubItemHours('');
         setSubItemObservation('');
+        setSubItemDate(new Date().toISOString().split('T')[0]);
       }
       return;
     }
 
-    // Move from Completed to Pending
+    // Move from Completed to Pending (Reopen)
+    setReopeningItem({ groupId, subItemId });
+  };
+
+  const confirmReopenItem = async () => {
+    if (!demand || !demand.checklist || !reopeningItem) return;
+    
+    const { groupId, subItemId } = reopeningItem;
     setUpdatingSubItemId(subItemId);
     
     const newChecklist = demand.checklist.map(g => {
@@ -166,6 +181,36 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
       onUpdate(); // Refresh data in parent
     }
     setUpdatingSubItemId(null);
+    setReopeningItem(null);
+  };
+
+  const formatHoursMask = (value: string) => {
+    const val = value.replace(/\D/g, '');
+    if (val.length > 2) {
+      return val.slice(0, 2) + ':' + val.slice(2, 4);
+    }
+    return val;
+  };
+
+  const handleReopenDemand = async () => {
+    setIsUpdatingStatus(true);
+    const { error } = await supabase
+      .from('demands')
+      .update({ status: 'Em Andamento' })
+      .eq('id', demand.id);
+    setIsUpdatingStatus(false);
+    if (!error) {
+      setShowReopenConfirm(false);
+      onUpdate();
+    } else {
+      console.error('Erro ao reabrir demanda:', error);
+    }
+  };
+
+  const parseHours = (timeStr: string): number => {
+    if (!timeStr) return 0;
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return (hours || 0) + (minutes || 0) / 60;
   };
 
   const confirmSubItemCompletion = async () => {
@@ -174,7 +219,8 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
     const { groupId, subItemId } = completingSubItem;
     setUpdatingSubItemId(subItemId);
     
-    const hours = subItemHours ? Number(subItemHours) : undefined;
+    const hours = subItemHours ? parseHours(subItemHours) : undefined;
+    const completedDate = subItemDate ? new Date(subItemDate + 'T12:00:00Z').toISOString() : new Date().toISOString();
     
     const newChecklist = demand.checklist.map(g => {
       if (g.id === groupId) {
@@ -186,7 +232,7 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
             in_progress: false,
             logged_hours: hours, 
             observation: subItemObservation || undefined,
-            completed_at: new Date().toISOString(),
+            completed_at: completedDate,
             completed_by: profile?.id
           } : s)
         };
@@ -304,26 +350,33 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
         });
       });
       if (totalHours > 0) {
-        setLoggedHours(totalHours.toString());
+        const extraHrs = Math.floor(totalHours);
+        const extraMins = Math.round((totalHours % 1) * 60);
+        setLoggedHours(`${extraHrs.toString().padStart(2, '0')}:${extraMins.toString().padStart(2, '0')}`);
       }
     }
+    
+    setFinishDate(new Date().toISOString().split('T')[0]);
     setShowFinishForm(true);
   };
 
   const handleFinishWork = async () => {
-    if (!loggedHours || isNaN(Number(loggedHours))) {
-      alert('Por favor, insira um número válido para as horas gastas.');
+    const parsedHours = parseHours(loggedHours);
+    if (!loggedHours || isNaN(parsedHours)) {
+      alert('Por favor, insira um tempo válido (HH:MM) para as horas gastas.');
       return;
     }
 
     setIsUpdatingStatus(true);
+    const completedDate = finishDate ? new Date(finishDate + 'T12:00:00Z').toISOString() : new Date().toISOString();
+    
     const { error } = await supabase
       .from('demands')
       .update({ 
         status: 'Concluído',
-        logged_hours: Number(loggedHours),
+        logged_hours: parsedHours,
         final_observations: finalObservations,
-        completed_at: new Date().toISOString()
+        completed_at: completedDate
       })
       .eq('id', demand.id);
     
@@ -382,6 +435,16 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
             <h2 className="text-2xl font-semibold text-zinc-100 leading-tight">{demand.title}</h2>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            {demand.status === 'Concluído' && (
+              <button 
+                onClick={() => setShowReopenConfirm(true)}
+                className="px-3 py-1.5 text-xs font-medium bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/20 rounded-lg transition-colors flex items-center gap-2"
+                title="Reabrir Demanda"
+              >
+                <Play className="w-4 h-4" />
+                Reabrir
+              </button>
+            )}
             {demand.status !== 'Concluído' && (
               <button 
                 onClick={() => {
@@ -434,6 +497,32 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
           </div>
         )}
 
+        {/* Reopen Confirmation */}
+        {showReopenConfirm && (
+          <div className="bg-amber-500/10 border-b border-amber-500/20 p-4 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-3 text-amber-400">
+              <AlertTriangle className="w-5 h-5" />
+              <span className="text-sm font-medium">Tem certeza que deseja reabrir esta demanda?</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setShowReopenConfirm(false)}
+                className="px-3 py-1.5 text-xs font-medium text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
+                disabled={isUpdatingStatus}
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={handleReopenDemand}
+                className="px-3 py-1.5 text-xs font-medium bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors disabled:opacity-50"
+                disabled={isUpdatingStatus}
+              >
+                {isUpdatingStatus ? 'Reabrindo...' : 'Sim, reabrir'}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Content */}
         <div className="p-6 overflow-y-auto flex-1 min-h-0 space-y-8 custom-scrollbar">
           
@@ -477,19 +566,31 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
               </h3>
               
               <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-zinc-300 flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-zinc-500" /> Horas Gastas
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.5"
-                    value={loggedHours}
-                    onChange={(e) => setLoggedHours(e.target.value)}
-                    placeholder="Ex: 2.5"
-                    className="w-full px-3 py-2 bg-[#111111] border border-zinc-800 rounded-lg text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-zinc-300 flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-zinc-500" /> Data de Conclusão
+                    </label>
+                    <input
+                      type="date"
+                      value={finishDate}
+                      onChange={(e) => setFinishDate(e.target.value)}
+                      className="w-full px-3 py-2 bg-[#111111] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all [color-scheme:dark]"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-zinc-300 flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-zinc-500" /> Horas Gastas
+                    </label>
+                    <input
+                      type="text"
+                      value={loggedHours}
+                      onChange={(e) => setLoggedHours(formatHoursMask(e.target.value))}
+                      placeholder="HH:MM"
+                      maxLength={5}
+                      className="w-full px-3 py-2 bg-[#111111] border border-zinc-800 rounded-lg text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-mono"
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-1.5">
@@ -736,8 +837,8 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
                                 {/* Display logged hours and observation if completed */}
                                 {subItem.completed && (subItem.logged_hours || subItem.observation || subItem.completed_at) && expandedSubItems[subItem.id] && (
                                   <div className="ml-9 mb-2 p-2 bg-emerald-500/5 border border-emerald-500/10 rounded-lg text-xs text-zinc-400 space-y-1">
-                                    {subItem.completed_at && <div><span className="font-semibold text-zinc-300">Data:</span> {new Date(subItem.completed_at).toLocaleDateString('pt-BR')}</div>}
-                                    {subItem.logged_hours && <div><span className="font-semibold text-zinc-300">Horas:</span> {subItem.logged_hours}h</div>}
+                                    {subItem.completed_at && <div><span className="font-semibold text-zinc-300">Data:</span> {new Date(subItem.completed_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</div>}
+                                    {subItem.logged_hours && <div><span className="font-semibold text-zinc-300">Horas:</span> {Math.floor(subItem.logged_hours).toString().padStart(2, '0')}:{Math.round((subItem.logged_hours % 1) * 60).toString().padStart(2, '0')}</div>}
                                     {subItem.observation && <div><span className="font-semibold text-zinc-300">Obs:</span> {subItem.observation}</div>}
                                   </div>
                                 )}
@@ -745,10 +846,21 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
                                 {/* Inline Form */}
                                 {completingSubItem?.subItemId === subItem.id && (
                                   <div className="ml-9 mb-2 p-3 bg-[#0A0A0A] border border-zinc-800 rounded-lg space-y-3">
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                                      <div className="sm:col-span-1">
+                                        <label className="text-xs text-zinc-400 mb-1 block">Data</label>
+                                        <input type="date" value={subItemDate} onChange={e => setSubItemDate(e.target.value)} className="w-full bg-[#111111] border border-zinc-800 rounded-md px-2 py-1.5 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 [color-scheme:dark]" />
+                                      </div>
                                       <div className="sm:col-span-1">
                                         <label className="text-xs text-zinc-400 mb-1 block">Horas Gastas</label>
-                                        <input type="number" step="0.5" min="0" value={subItemHours} onChange={e => setSubItemHours(e.target.value)} className="w-full bg-[#111111] border border-zinc-800 rounded-md px-2 py-1.5 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500" placeholder="Ex: 1.5" />
+                                        <input 
+                                          type="text" 
+                                          value={subItemHours} 
+                                          onChange={e => setSubItemHours(formatHoursMask(e.target.value))} 
+                                          className="w-full bg-[#111111] border border-zinc-800 rounded-md px-2 py-1.5 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 font-mono" 
+                                          placeholder="HH:MM" 
+                                          maxLength={5}
+                                        />
                                       </div>
                                       <div className="sm:col-span-2">
                                         <label className="text-xs text-zinc-400 mb-1 block">Observação (opcional)</label>
@@ -758,6 +870,20 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
                                     <div className="flex justify-end gap-2">
                                       <button onClick={() => setCompletingSubItem(null)} className="px-3 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-md transition-colors">Cancelar</button>
                                       <button onClick={confirmSubItemCompletion} disabled={updatingSubItemId === subItem.id} className="px-3 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white rounded-md transition-colors disabled:opacity-50">Confirmar</button>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Reopen Item Confirmation */}
+                                {reopeningItem?.subItemId === subItem.id && (
+                                  <div className="ml-9 mb-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-center justify-between">
+                                    <div className="flex items-center gap-2 text-amber-400">
+                                      <AlertTriangle className="w-4 h-4 shrink-0" />
+                                      <span className="text-xs font-medium">Reabrir item? As horas registradas serão removidas.</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                      <button onClick={() => setReopeningItem(null)} className="px-2 py-1 text-[10px] font-medium text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded transition-colors">Cancelar</button>
+                                      <button onClick={confirmReopenItem} disabled={updatingSubItemId === subItem.id} className="px-2 py-1 text-[10px] font-medium bg-amber-500 hover:bg-amber-600 text-white rounded transition-colors disabled:opacity-50">Reabrir</button>
                                     </div>
                                   </div>
                                 )}

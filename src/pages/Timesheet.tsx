@@ -165,6 +165,7 @@ export default function Timesheet() {
                   if (s.id === editingEntry.subItemId) {
                     return {
                       ...s,
+                      title: editingEntry.activity, // Update the activity/title
                       logged_hours: parseHours(editingEntry.hours),
                       completed_at: new Date(editingEntry.date + 'T12:00:00Z').toISOString()
                     };
@@ -877,12 +878,11 @@ export default function Timesheet() {
                   placeholder="Descreva a atividade realizada..."
                   value={editingEntry.activity}
                   onChange={e => setEditingEntry({...editingEntry, activity: e.target.value})}
-                  disabled={editingEntry.type === 'demand'}
-                  className="w-full px-3 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all min-h-[100px] resize-none disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-3 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all min-h-[100px] resize-none"
                 />
                 {editingEntry.type === 'demand' && (
                   <p className="text-xs text-zinc-500 mt-1">
-                    Para alterar o cliente ou a atividade de uma demanda, acesse a tela de Gestão de Demandas.
+                    Nota: Alterar a atividade aqui não altera o título original da demanda.
                   </p>
                 )}
               </div>

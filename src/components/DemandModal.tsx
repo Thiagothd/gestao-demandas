@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { Profile, DemandPriority, Demand, ChecklistItem, ChecklistSubItem } from '../types';
-import { X, Plus, Link as LinkIcon, Tag, CheckSquare, AlertCircle, Save, Wand2, Upload, Trash2, Edit2, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
+import { X, Plus, Link as LinkIcon, Tag, CheckSquare, AlertCircle, Save, Wand2, Upload, Trash2, Edit2, Loader2, ChevronDown, ChevronRight, ChevronUp } from 'lucide-react';
 import * as mammoth from 'mammoth';
 import { GoogleGenAI, Type } from '@google/genai';
 
@@ -23,7 +23,8 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
   const [sla, setSla] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
-  const [showSmartImport, setShowSmartImport] = useState(true);
+  const [quickChecklistInput, setQuickChecklistInput] = useState('');
+  const [showSmartImport, setShowSmartImport] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -204,6 +205,42 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
       ...prev,
       [groupId]: !prev[groupId]
     }));
+  };
+
+  const handleAddQuickItem = () => {
+    if (!quickChecklistInput.trim()) return;
+
+    const newItem: ChecklistSubItem = {
+      id: crypto.randomUUID(),
+      title: quickChecklistInput.trim(),
+      completed: false
+    };
+
+    setChecklistItems(prev => {
+      const geralGroupIndex = prev.findIndex(g => g.title === 'Geral');
+      if (geralGroupIndex >= 0) {
+        // Add to existing 'Geral' group
+        const newChecklist = [...prev];
+        newChecklist[geralGroupIndex] = {
+          ...newChecklist[geralGroupIndex],
+          subItems: [...newChecklist[geralGroupIndex].subItems, newItem]
+        };
+        return newChecklist;
+      } else {
+        // Create 'Geral' group
+        return [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            title: 'Geral',
+            isGroup: true,
+            subItems: [newItem]
+          }
+        ];
+      }
+    });
+
+    setQuickChecklistInput('');
   };
 
   const handleSmartImport = async () => {
@@ -498,7 +535,7 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium text-zinc-300 flex items-center gap-2">
                   <CheckSquare className="w-4 h-4 text-zinc-500" />
-                  Checklist Inteligente
+                  Checklist
                 </label>
                 {checklistItems.length > 0 && (
                   <button
@@ -511,71 +548,111 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
                     className="text-xs flex items-center gap-1.5 px-2.5 py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-md transition-colors font-medium border border-red-500/20"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                    Refazer Checklist
+                    Limpar Checklist
                   </button>
                 )}
               </div>
 
-              {checklistItems.length === 0 && (
-                <div className="bg-[#1A1A1A] border border-indigo-500/30 rounded-xl p-4 space-y-4 mb-4">
-                  <div className="flex items-center gap-4">
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex-1 flex flex-col items-center justify-center gap-2 py-6 border-2 border-dashed border-indigo-500/30 rounded-lg hover:bg-indigo-500/5 hover:border-indigo-500/50 transition-colors"
-                    >
-                      <Upload className="w-6 h-6 text-indigo-400" />
-                      <span className="text-sm font-medium text-indigo-300">Fazer Upload de .docx ou .txt</span>
-                    </button>
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleFileUpload}
-                      accept=".docx,.txt"
-                      className="hidden"
-                    />
-                  </div>
-                  
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-zinc-800"></div>
-                    </div>
-                    <div className="relative flex justify-center text-[10px] font-medium tracking-wider uppercase">
-                      <span className="bg-[#1A1A1A] px-2 text-zinc-400">Ou digite/cole o texto</span>
-                    </div>
-                  </div>
+              {/* Quick Checklist Input */}
+              <div className="flex gap-2 mb-4">
+                <input
+                  type="text"
+                  value={quickChecklistInput}
+                  onChange={(e) => setQuickChecklistInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddQuickItem();
+                    }
+                  }}
+                  placeholder="Adicionar item rápido (Ex: Menu - Vendas - Proposta: Erro ao abrir)"
+                  className="flex-1 bg-[#0A0A0A] border border-zinc-800 rounded-lg px-4 py-2 text-sm text-zinc-100 focus:outline-none focus:border-indigo-500 transition-colors placeholder:text-zinc-600"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddQuickItem}
+                  disabled={!quickChecklistInput.trim()}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Adicionar
+                </button>
+              </div>
 
-                  <div className="space-y-3">
-                    <textarea
-                      value={aiPrompt}
-                      onChange={(e) => setAiPrompt(e.target.value)}
-                      rows={6}
-                      className="w-full bg-[#0A0A0A] border border-zinc-800 rounded-lg px-4 py-3 text-zinc-100 focus:outline-none focus:border-indigo-500 transition-colors resize-none text-sm placeholder:text-zinc-600"
-                      placeholder="Cole o conteúdo do documento, e-mail ou anotações aqui para gerar um checklist inteligente..."
-                    />
-                    <div className="flex justify-end">
+              {/* Smart Import Accordion */}
+              <div className="bg-[#1A1A1A] border border-indigo-500/30 rounded-xl overflow-hidden mb-4">
+                <button
+                  type="button"
+                  onClick={() => setShowSmartImport(!showSmartImport)}
+                  className="w-full flex items-center justify-between p-4 bg-[#111111] hover:bg-zinc-800/50 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <Wand2 className="w-4 h-4 text-indigo-400" />
+                    <span className="text-sm font-medium text-indigo-300">Gerar Checklist Inteligente</span>
+                  </div>
+                  {showSmartImport ? <ChevronUp className="w-4 h-4 text-zinc-500" /> : <ChevronDown className="w-4 h-4 text-zinc-500" />}
+                </button>
+                
+                {showSmartImport && (
+                  <div className="p-4 space-y-4 border-t border-indigo-500/30">
+                    <div className="flex items-center gap-4">
                       <button
                         type="button"
-                        onClick={handleSmartImport}
-                        disabled={!aiPrompt.trim() || isGenerating}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex-1 flex flex-col items-center justify-center gap-2 py-6 border-2 border-dashed border-indigo-500/30 rounded-lg hover:bg-indigo-500/5 hover:border-indigo-500/50 transition-colors"
                       >
-                        {isGenerating ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            Analisando e Gerando...
-                          </>
-                        ) : (
-                          <>
-                            <Wand2 className="w-4 h-4" />
-                            Gerar Checklist com IA
-                          </>
-                        )}
+                        <Upload className="w-6 h-6 text-indigo-400" />
+                        <span className="text-sm font-medium text-indigo-300">Fazer Upload de .docx ou .txt</span>
                       </button>
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileUpload}
+                        accept=".docx,.txt"
+                        className="hidden"
+                      />
+                    </div>
+                    
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-zinc-800"></div>
+                      </div>
+                      <div className="relative flex justify-center text-[10px] font-medium tracking-wider uppercase">
+                        <span className="bg-[#1A1A1A] px-2 text-zinc-400">Ou digite/cole o texto</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <textarea
+                        value={aiPrompt}
+                        onChange={(e) => setAiPrompt(e.target.value)}
+                        rows={6}
+                        className="w-full bg-[#0A0A0A] border border-zinc-800 rounded-lg px-4 py-3 text-zinc-100 focus:outline-none focus:border-indigo-500 transition-colors resize-none text-sm placeholder:text-zinc-600"
+                        placeholder="Cole o conteúdo do documento, e-mail ou anotações aqui para gerar um checklist inteligente..."
+                      />
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={handleSmartImport}
+                          disabled={!aiPrompt.trim() || isGenerating}
+                          className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20"
+                        >
+                          {isGenerating ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Analisando e Gerando...
+                            </>
+                          ) : (
+                            <>
+                              <Wand2 className="w-4 h-4" />
+                              Gerar Checklist com IA
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
 
               {checklistItems.length > 0 && (
                 <div className="space-y-4 mt-6 pt-6 border-t border-zinc-800/50">
