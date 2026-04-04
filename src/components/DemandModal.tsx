@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
-import { Profile, DemandPriority, Demand, ChecklistItem, ChecklistSubItem } from '../types';
+import { getLocalDateString } from '../utils';
+import { Profile, DemandPriority, Demand, ChecklistItem, ChecklistSubItem, Attachment } from '../types';
 import { X, Plus, Link as LinkIcon, Tag, CheckSquare, AlertCircle, Save, Wand2, Upload, Trash2, Edit2, Loader2, ChevronDown, ChevronRight, ChevronUp } from 'lucide-react';
 import * as mammoth from 'mammoth';
 import { GoogleGenAI, Type } from '@google/genai';
@@ -45,7 +46,7 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
         setRequester(demandToEdit.requester || '');
         setRequestType(demandToEdit.request_type || '');
         setPriority(demandToEdit.priority as DemandPriority);
-        setSla(demandToEdit.sla ? new Date(demandToEdit.sla).toISOString().split('T')[0] : '');
+        setSla(demandToEdit.sla ? getLocalDateString(new Date(demandToEdit.sla)) : '');
         setAssignedTo(demandToEdit.assigned_to || '');
         setChecklistItems(demandToEdit.checklist || []);
         setAttachments(demandToEdit.attachments || []);

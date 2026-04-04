@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { Search, Filter, Calendar, X, Clock, User, MoreVertical, Edit2, Trash2, Plus, Upload } from 'lucide-react';
+import { getLocalDateString } from '../utils';
 import * as XLSX from 'xlsx';
 
 interface OvertimeEntry {
@@ -15,6 +16,7 @@ interface OvertimeEntry {
   hours: string;
   observation: string;
   created_at: string;
+  isNoOverride?: boolean;
 }
 
 export default function Overtime() {
@@ -42,7 +44,7 @@ export default function Overtime() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   const [newEntry, setNewEntry] = useState({
-    date: new Date().toISOString().split('T')[0],
+    date: getLocalDateString(),
     client: '',
     reason: '',
     type: 'Hora Extra (Dia Útil)',
@@ -103,13 +105,14 @@ export default function Overtime() {
         }]);
         if (error) throw error;
       } else {
+        const prefix = editingEntry.isNoOverride ? '[NO_OVERRIDE] ' : '';
         const { error } = await supabase.from('overtime_entries')
           .update({
             client: editingEntry.client,
             reason: editingEntry.reason,
             type: editingEntry.type,
             hours: editingEntry.hours,
-            observation: editingEntry.observation
+            observation: prefix + editingEntry.observation
           })
           .eq('id', editingEntry.id);
         if (error) throw error;
@@ -138,14 +141,14 @@ export default function Overtime() {
         reason: newEntry.reason,
         type: newEntry.type,
         hours: newEntry.hours,
-        observation: newEntry.observation || ''
+        observation: '[NO_OVERRIDE]' + (newEntry.observation ? ' ' + newEntry.observation : '')
       }]);
 
       if (error) throw error;
 
       setIsModalOpen(false);
       setNewEntry({
-        date: new Date().toISOString().split('T')[0],
+        date: getLocalDateString(),
         client: '',
         reason: '',
         type: 'Hora Extra (Dia Útil)',
@@ -175,18 +178,18 @@ export default function Overtime() {
         const data = XLSX.utils.sheet_to_json(ws);
 
         const entriesToInsert = data.map((row: any) => {
-          let dateStr = new Date().toISOString().split('T')[0];
+          let dateStr = getLocalDateString();
           if (row.Data || row.date || row.DATA) {
             const d = row.Data || row.date || row.DATA;
             if (typeof d === 'number') {
               const date = new Date((d - (25567 + 2)) * 86400 * 1000);
-              dateStr = date.toISOString().split('T')[0];
+              dateStr = getLocalDateString(date);
             } else if (typeof d === 'string') {
               const parts = d.split('/');
               if (parts.length === 3) {
                 dateStr = `${parts[2]}-${parts[1]}-${parts[0]}`;
               } else {
-                dateStr = new Date(d).toISOString().split('T')[0];
+                dateStr = getLocalDateString(new Date(d));
               }
             }
           }
@@ -209,7 +212,7 @@ export default function Overtime() {
             reason: row.Motivo || row.reason || row.MOTIVO || 'Importado via planilha',
             type: row.Tipo || row.type || row.TIPO || 'Hora Extra (Dia Útil)',
             hours: hoursStr,
-            observation: row.Observacao || row.observation || row.OBSERVACAO || ''
+            observation: '[NO_OVERRIDE]' + (row.Observacao || row.observation || row.OBSERVACAO ? ' ' + (row.Observacao || row.observation || row.OBSERVACAO) : '')
           };
         });
 
@@ -244,7 +247,7 @@ export default function Overtime() {
 
       // Fetch regular time entries and demands for auto-calculation
       const { data: timeEntries } = await supabase.from('time_entries').select('*');
-      const { data: demandsData } = await supabase.from('demands').select('id, client, title, checklist, completed_at');
+      const { data: demandsData } = await supabase.from('demands').select('id, client, title, checklist, completed_at, created_at, assigned_to');
 
       type TimeEvent = {
         userId: string;
@@ -286,7 +289,7 @@ export default function Overtime() {
               if (!completedAt) return;
               
               const dateObj = new Date(completedAt);
-              const date = dateObj.toISOString().split('T')[0];
+              const date = getLocalDateString(dateObj);
 
               const userId = item.completed_by || demand.assigned_to || 'unknown';
               const totalMins = Math.round(Number(item.logged_hours) * 60);
@@ -342,10 +345,11 @@ export default function Overtime() {
         console.error('Error fetching manual entries:', manualError);
       }
       
-      const manualMap: Record<string, any> = {};
+      const manualEntriesByDate: Record<string, any[]> = {};
       (manualEntries || []).forEach(entry => {
         const key = `${entry.user_id}-${entry.date}`;
-        manualMap[key] = entry;
+        if (!manualEntriesByDate[key]) manualEntriesByDate[key] = [];
+        manualEntriesByDate[key].push(entry);
       });
 
       // Calculate automatic overtime
@@ -394,27 +398,42 @@ export default function Overtime() {
       const finalEntries: OvertimeEntry[] = [];
 
       // Add manual entries (that are not deleted)
-      Object.values(manualMap).forEach(entry => {
-        if (entry.hours !== '00:00') {
-          finalEntries.push({
-            id: entry.id,
-            user_id: entry.user_id,
-            devName: profileMap[entry.user_id] || 'Desconhecido',
-            date: entry.date,
-            client: entry.client || '-',
-            reason: entry.reason,
-            type: entry.type,
-            hours: entry.hours,
-            observation: entry.observation || '',
-            created_at: entry.created_at
-          });
-        }
+      Object.values(manualEntriesByDate).forEach(entries => {
+        entries.forEach(entry => {
+          if (entry.hours !== '00:00') {
+            let obs = entry.observation || '';
+            let isNoOverride = false;
+            if (obs.startsWith('[NO_OVERRIDE]')) {
+              isNoOverride = true;
+              obs = obs.replace('[NO_OVERRIDE]', '').trim();
+            }
+
+            finalEntries.push({
+              id: entry.id,
+              user_id: entry.user_id,
+              devName: profileMap[entry.user_id] || 'Desconhecido',
+              date: entry.date,
+              client: entry.client || '-',
+              reason: entry.reason,
+              type: entry.type,
+              hours: entry.hours,
+              observation: obs,
+              created_at: entry.created_at,
+              isNoOverride
+            });
+          }
+        });
       });
 
       // Add auto entries that don't have a manual override
       autoEntries.forEach(auto => {
         const key = `${auto.user_id}-${auto.date}`;
-        if (!manualMap[key]) {
+        const manualForDay = manualEntriesByDate[key] || [];
+        
+        // Hide auto entry if there is ANY manual entry that is an override (i.e. doesn't have [NO_OVERRIDE])
+        const hasOverride = manualForDay.some(e => !(e.observation || '').startsWith('[NO_OVERRIDE]'));
+        
+        if (!hasOverride) {
           finalEntries.push(auto);
         }
       });

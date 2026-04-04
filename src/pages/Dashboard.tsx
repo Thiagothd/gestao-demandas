@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { Demand, DemandStatus } from '../types';
+import { getLocalDateString } from '../utils';
 import DemandModal from '../components/DemandModal';
 import DemandDetailsModal from '../components/DemandDetailsModal';
 import { Plus, Calendar, Search, Filter, CheckSquare, Building2, User, X } from 'lucide-react';
@@ -212,7 +213,7 @@ export default function Dashboard() {
         } else {
           // Convert to YYYY-MM-DD in local time for accurate comparison
           const d = new Date(dateValue);
-          const demandDateStr = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+          const demandDateStr = getLocalDateString(d);
           
           let matchesStart = true;
           if (startDate) {

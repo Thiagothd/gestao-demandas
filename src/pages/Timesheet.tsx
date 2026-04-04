@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { Plus, Search, Filter, Calendar, AlertTriangle, Copy, Check, X, Clock, FileSpreadsheet, User, Upload, MoreVertical, Edit2, Trash2 } from 'lucide-react';
+import { getLocalDateString } from '../utils';
 import * as XLSX from 'xlsx';
 
 interface UnifiedTimeEntry {
@@ -48,7 +49,7 @@ const formatHours = (decimalHours: number) => {
 };
 
 export default function Timesheet() {
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const [entries, setEntries] = useState<UnifiedTimeEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [needsSetup, setNeedsSetup] = useState(false);
@@ -71,7 +72,7 @@ export default function Timesheet() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newEntry, setNewEntry] = useState({
-    date: new Date().toISOString().split('T')[0],
+    date: getLocalDateString(),
     client: '',
     activity: '',
     status: 'Concluído',
@@ -255,7 +256,7 @@ export default function Timesheet() {
                   if (subItem.completed) {
                     const completedAt = subItem.completed_at || demand.completed_at || demand.created_at;
                     const dateObj = new Date(completedAt);
-                    const dateStr = dateObj.toISOString().split('T')[0];
+                    const dateStr = getLocalDateString(dateObj);
                     
                     unifiedEntries.push({
                       id: subItem.id,
@@ -312,7 +313,7 @@ export default function Timesheet() {
       
       setIsModalOpen(false);
       setNewEntry({
-        date: new Date().toISOString().split('T')[0],
+        date: getLocalDateString(),
         client: '',
         activity: '',
         status: 'Concluído',
@@ -341,18 +342,18 @@ export default function Timesheet() {
         const data = XLSX.utils.sheet_to_json(ws);
 
         const entriesToInsert = data.map((row: any) => {
-          let dateStr = new Date().toISOString().split('T')[0];
+          let dateStr = getLocalDateString();
           if (row.Data || row.date || row.DATA) {
             const d = row.Data || row.date || row.DATA;
             if (typeof d === 'number') {
               const date = new Date((d - (25567 + 2)) * 86400 * 1000);
-              dateStr = date.toISOString().split('T')[0];
+              dateStr = getLocalDateString(date);
             } else if (typeof d === 'string') {
               const parts = d.split('/');
               if (parts.length === 3) {
                 dateStr = `${parts[2]}-${parts[1]}-${parts[0]}`;
               } else {
-                dateStr = new Date(d).toISOString().split('T')[0];
+                dateStr = getLocalDateString(new Date(d));
               }
             }
           }

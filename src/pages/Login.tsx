@@ -81,7 +81,7 @@ export default function Login() {
             {isLogin ? <LogIn className="w-8 h-8 text-indigo-400" /> : <UserPlus className="w-8 h-8 text-indigo-400" />}
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-100">
-            Gestão & Alinhamento
+            {isLogin ? 'Login' : 'Cadastro'}
           </h1>
           <p className="text-zinc-500 mt-2 text-sm text-center">
             {isLogin 

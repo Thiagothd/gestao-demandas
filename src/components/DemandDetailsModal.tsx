@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Demand, Comment } from '../types';
+import { getLocalDateString } from '../utils';
 import { X, Calendar, User, Tag, Paperclip, CheckSquare, Square, Building2, AlignLeft, Link as LinkIcon, Trash2, Edit2, AlertTriangle, Play, CheckCircle2, Clock, MessageSquare, Send, ChevronDown, ChevronRight, ChevronUp } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
@@ -18,7 +19,7 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
   const [completingSubItem, setCompletingSubItem] = useState<{groupId: string, subItemId: string} | null>(null);
   const [subItemHours, setSubItemHours] = useState('');
   const [subItemObservation, setSubItemObservation] = useState('');
-  const [subItemDate, setSubItemDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [subItemDate, setSubItemDate] = useState<string>(getLocalDateString());
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [expandedSubItems, setExpandedSubItems] = useState<Record<string, boolean>>({});
   const [isDeleting, setIsDeleting] = useState(false);
@@ -37,7 +38,7 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
   const [showFinishForm, setShowFinishForm] = useState(false);
   const [loggedHours, setLoggedHours] = useState<string>('');
   const [finalObservations, setFinalObservations] = useState('');
-  const [finishDate, setFinishDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [finishDate, setFinishDate] = useState<string>(getLocalDateString());
 
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
@@ -49,7 +50,7 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
       setCompletingSubItem(null);
       setSubItemHours('');
       setSubItemObservation('');
-      setSubItemDate(new Date().toISOString().split('T')[0]);
+      setSubItemDate(getLocalDateString());
       setShowReopenConfirm(false);
       setReopeningItem(null);
     }
@@ -139,7 +140,7 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
         setCompletingSubItem({ groupId, subItemId });
         setSubItemHours('');
         setSubItemObservation('');
-        setSubItemDate(new Date().toISOString().split('T')[0]);
+        setSubItemDate(getLocalDateString());
       }
       return;
     }
@@ -356,7 +357,7 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
       }
     }
     
-    setFinishDate(new Date().toISOString().split('T')[0]);
+    setFinishDate(getLocalDateString());
     setShowFinishForm(true);
   };
 
