@@ -553,7 +553,8 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
                   type="date"
                   value={sla}
                   onChange={(e) => setSla(e.target.value)}
-                  className="w-full bg-[#0A0A0A] border border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-100 focus:outline-none focus:border-indigo-500 transition-colors [color-scheme:dark]"
+                  className="w-full bg-[#0A0A0A] border border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-100 focus:outline-none focus:border-indigo-500 transition-colors"
+                  style={{ colorScheme: 'dark' }}
                 />
               </div>
 

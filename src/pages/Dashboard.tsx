@@ -368,14 +368,16 @@ export default function Dashboard() {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-full sm:w-auto px-3 py-1.5 bg-[#111111] border border-zinc-800 rounded-md text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-all [color-scheme:dark]"
+              className="w-full sm:w-auto px-3 py-1.5 bg-[#111111] border border-zinc-800 rounded-md text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-all"
+              style={{ colorScheme: 'dark' }}
             />
             <span className="text-zinc-500 text-sm">até</span>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="w-full sm:w-auto px-3 py-1.5 bg-[#111111] border border-zinc-800 rounded-md text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-all [color-scheme:dark]"
+              className="w-full sm:w-auto px-3 py-1.5 bg-[#111111] border border-zinc-800 rounded-md text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-all"
+              style={{ colorScheme: 'dark' }}
             />
           </div>
 

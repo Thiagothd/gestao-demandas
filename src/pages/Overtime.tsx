@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
-import { Search, Filter, Calendar, X, Clock, User, MoreVertical, Edit2, Trash2 } from 'lucide-react';
+import { Search, Filter, Calendar, X, Clock, User, MoreVertical, Edit2, Trash2, Plus, Upload } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 interface OvertimeEntry {
   id: string;
@@ -36,8 +37,18 @@ export default function Overtime() {
 
   const [editingEntry, setEditingEntry] = useState<OvertimeEntry | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  const [newEntry, setNewEntry] = useState({
+    date: new Date().toISOString().split('T')[0],
+    client: '',
+    reason: '',
+    type: 'Hora Extra (Dia Útil)',
+    hours: '',
+    observation: ''
+  });
 
   const handleEdit = (entry: OvertimeEntry) => {
     setEditingEntry(entry);
@@ -112,6 +123,110 @@ export default function Overtime() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleAddEntry = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase.from('overtime_entries').insert([{
+        user_id: user.id,
+        date: newEntry.date,
+        client: newEntry.client,
+        reason: newEntry.reason,
+        type: newEntry.type,
+        hours: newEntry.hours,
+        observation: newEntry.observation || ''
+      }]);
+
+      if (error) throw error;
+
+      setIsModalOpen(false);
+      setNewEntry({
+        date: new Date().toISOString().split('T')[0],
+        client: '',
+        reason: '',
+        type: 'Hora Extra (Dia Útil)',
+        hours: '',
+        observation: ''
+      });
+      fetchEntries();
+    } catch (error) {
+      console.error('Error adding entry:', error);
+      alert('Erro ao adicionar hora extra.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws);
+
+        const entriesToInsert = data.map((row: any) => {
+          let dateStr = new Date().toISOString().split('T')[0];
+          if (row.Data || row.date || row.DATA) {
+            const d = row.Data || row.date || row.DATA;
+            if (typeof d === 'number') {
+              const date = new Date((d - (25567 + 2)) * 86400 * 1000);
+              dateStr = date.toISOString().split('T')[0];
+            } else if (typeof d === 'string') {
+              const parts = d.split('/');
+              if (parts.length === 3) {
+                dateStr = `${parts[2]}-${parts[1]}-${parts[0]}`;
+              } else {
+                dateStr = new Date(d).toISOString().split('T')[0];
+              }
+            }
+          }
+
+          let hoursStr = '00:00';
+          const h = row.Horas || row.hours || row.HOURS;
+          if (typeof h === 'number') {
+            const totalMinutes = Math.round(h * 24 * 60);
+            const hrs = Math.floor(totalMinutes / 60);
+            const mins = totalMinutes % 60;
+            hoursStr = `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+          } else if (typeof h === 'string') {
+            hoursStr = h;
+          }
+
+          return {
+            user_id: user.id,
+            date: dateStr,
+            client: row.Cliente || row.client || row.CLIENTE || '',
+            reason: row.Motivo || row.reason || row.MOTIVO || 'Importado via planilha',
+            type: row.Tipo || row.type || row.TIPO || 'Hora Extra (Dia Útil)',
+            hours: hoursStr,
+            observation: row.Observacao || row.observation || row.OBSERVACAO || ''
+          };
+        });
+
+        const { error } = await supabase.from('overtime_entries').insert(entriesToInsert);
+        if (error) throw error;
+
+        alert('Planilha importada com sucesso!');
+        fetchEntries();
+      } catch (error) {
+        console.error('Error importing spreadsheet:', error);
+        alert('Erro ao importar planilha. Verifique o formato do arquivo.');
+      }
+    };
+    reader.readAsBinaryString(file);
+    
+    // Reset file input
+    e.target.value = '';
   };
 
   // Close menu when clicking outside
@@ -387,6 +502,28 @@ export default function Overtime() {
           </div>
           <h2 className="text-2xl font-bold text-zinc-100">Horas Extras</h2>
         </div>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <input
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              onChange={handleFileUpload}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              title="Importar planilha"
+            />
+            <button className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg text-sm font-medium transition-colors border border-zinc-700/50">
+              <Upload className="w-4 h-4" />
+              <span className="hidden sm:inline">Importar</span>
+            </button>
+          </div>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20"
+          >
+            <Plus className="w-4 h-4" />
+            Nova Hora Extra
+          </button>
+        </div>
       </div>
 
       {/* Filters Bar */}
@@ -439,14 +576,16 @@ export default function Overtime() {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-full sm:w-auto px-3 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-all [color-scheme:dark]"
+              className="w-full sm:w-auto px-3 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-all"
+              style={{ colorScheme: 'dark' }}
             />
             <span className="text-zinc-500 text-sm">até</span>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="w-full sm:w-auto px-3 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-all [color-scheme:dark]"
+              className="w-full sm:w-auto px-3 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-all"
+              style={{ colorScheme: 'dark' }}
             />
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
@@ -616,7 +755,8 @@ export default function Overtime() {
                     type="date"
                     value={editingEntry.date}
                     disabled
-                    className="w-full px-3 py-2 bg-zinc-800/50 border border-zinc-700/50 rounded-lg text-sm text-zinc-500 cursor-not-allowed [color-scheme:dark]"
+                    className="w-full px-3 py-2 bg-zinc-800/50 border border-zinc-700/50 rounded-lg text-sm text-zinc-500 cursor-not-allowed"
+                    style={{ colorScheme: 'dark' }}
                   />
                 </div>
                 <div>
@@ -626,7 +766,8 @@ export default function Overtime() {
                     required
                     value={editingEntry.hours}
                     onChange={(e) => setEditingEntry({ ...editingEntry, hours: e.target.value })}
-                    className="w-full px-3 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all [color-scheme:dark]"
+                    className="w-full px-3 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                    style={{ colorScheme: 'dark' }}
                   />
                 </div>
               </div>
@@ -703,6 +844,122 @@ export default function Overtime() {
                     </>
                   ) : (
                     'Salvar Alterações'
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* New Entry Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-[#111111] rounded-2xl shadow-2xl border border-zinc-800/80 overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-zinc-800/80 bg-[#111111]">
+              <h3 className="text-lg font-semibold text-zinc-100">Nova Hora Extra</h3>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="p-2 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddEntry} className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-zinc-400 mb-1.5">Data</label>
+                  <input
+                    type="date"
+                    required
+                    value={newEntry.date}
+                    onChange={(e) => setNewEntry({ ...newEntry, date: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                    style={{ colorScheme: 'dark' }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-zinc-400 mb-1.5">Horas</label>
+                  <input
+                    type="time"
+                    required
+                    value={newEntry.hours}
+                    onChange={(e) => setNewEntry({ ...newEntry, hours: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                    style={{ colorScheme: 'dark' }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-zinc-400 mb-1.5">Cliente</label>
+                <input
+                  type="text"
+                  value={newEntry.client}
+                  onChange={(e) => setNewEntry({ ...newEntry, client: e.target.value })}
+                  placeholder="Nome do cliente"
+                  className="w-full px-3 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-zinc-400 mb-1.5">Motivo</label>
+                <input
+                  type="text"
+                  required
+                  value={newEntry.reason}
+                  onChange={(e) => setNewEntry({ ...newEntry, reason: e.target.value })}
+                  placeholder="Motivo da hora extra"
+                  className="w-full px-3 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-zinc-400 mb-1.5">Tipo</label>
+                <select
+                  value={newEntry.type}
+                  onChange={(e) => setNewEntry({ ...newEntry, type: e.target.value })}
+                  className="w-full px-3 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all appearance-none"
+                >
+                  <option value="Hora Extra (Dia Útil)">Hora Extra (Dia Útil)</option>
+                  <option value="Hora Extra (Fim de Semana)">Hora Extra (Fim de Semana)</option>
+                  <option value="Plantão">Plantão</option>
+                  <option value="Sobreaviso">Sobreaviso</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-zinc-400 mb-1.5">Observação</label>
+                <textarea
+                  value={newEntry.observation}
+                  onChange={(e) => setNewEntry({ ...newEntry, observation: e.target.value })}
+                  placeholder="Observações adicionais..."
+                  rows={3}
+                  className="w-full px-3 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all resize-none"
+                />
+              </div>
+
+              <div className="pt-4 flex items-center justify-end gap-3 border-t border-zinc-800/80">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 text-sm font-medium text-zinc-400 hover:text-zinc-200 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-600/50 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20 flex items-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    'Salvar Apontamento'
                   )}
                 </button>
               </div>

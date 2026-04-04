@@ -575,7 +575,8 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
                       type="date"
                       value={finishDate}
                       onChange={(e) => setFinishDate(e.target.value)}
-                      className="w-full px-3 py-2 bg-[#111111] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all [color-scheme:dark]"
+                      className="w-full px-3 py-2 bg-[#111111] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+                      style={{ colorScheme: 'dark' }}
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -884,7 +885,7 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
                                     <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                                       <div className="sm:col-span-1">
                                         <label className="text-xs text-zinc-400 mb-1 block">Data</label>
-                                        <input type="date" value={subItemDate} onChange={e => setSubItemDate(e.target.value)} className="w-full bg-[#111111] border border-zinc-800 rounded-md px-2 py-1.5 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 [color-scheme:dark]" />
+                                        <input type="date" value={subItemDate} onChange={e => setSubItemDate(e.target.value)} className="w-full bg-[#111111] border border-zinc-800 rounded-md px-2 py-1.5 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500" style={{ colorScheme: 'dark' }} />
                                       </div>
                                       <div className="sm:col-span-1">
                                         <label className="text-xs text-zinc-400 mb-1 block">Horas Gastas</label>
