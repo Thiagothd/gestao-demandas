@@ -257,7 +257,13 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
     setErrorMessage(null);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+      
+      if (!apiKey) {
+        throw new Error("Chave da API do Gemini não configurada. Verifique o arquivo .env");
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
       
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
