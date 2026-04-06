@@ -17,6 +17,8 @@ interface OvertimeEntry {
   observation: string;
   created_at: string;
   isNoOverride?: boolean;
+  isPaid?: boolean;
+  paidAt?: string;
 }
 
 export default function Overtime() {
@@ -29,14 +31,37 @@ export default function Overtime() {
   const [selectedDev, setSelectedDev] = useState('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'pending'>('all');
   
   const [appliedFilters, setAppliedFilters] = useState({
     searchQuery: '',
     selectedDev: 'all',
     startDate: '',
-    endDate: ''
+    endDate: '',
+    status: 'all' as 'all' | 'paid' | 'pending'
   });
 
+  const [activeTab, setActiveTab] = useState<'registros' | 'pagamentos'>('registros');
+  const [paymentStartDate, setPaymentStartDate] = useState(() => {
+    const d = new Date();
+    if (d.getDate() <= 15) {
+      const prevMonth = new Date(d.getFullYear(), d.getMonth() - 1, 16);
+      return getLocalDateString(prevMonth);
+    } else {
+      const currMonth = new Date(d.getFullYear(), d.getMonth(), 16);
+      return getLocalDateString(currMonth);
+    }
+  });
+  const [paymentEndDate, setPaymentEndDate] = useState(() => {
+    const d = new Date();
+    if (d.getDate() <= 15) {
+      const currMonth = new Date(d.getFullYear(), d.getMonth(), 15);
+      return getLocalDateString(currMonth);
+    } else {
+      const nextMonth = new Date(d.getFullYear(), d.getMonth() + 1, 15);
+      return getLocalDateString(nextMonth);
+    }
+  });
   const [editingEntry, setEditingEntry] = useState<OvertimeEntry | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -52,6 +77,9 @@ export default function Overtime() {
     observation: ''
   });
 
+  const [confirmPayDev, setConfirmPayDev] = useState<{ userId: string, pendingEntries: OvertimeEntry[] } | null>(null);
+  const [confirmDeleteEntry, setConfirmDeleteEntry] = useState<OvertimeEntry | null>(null);
+
   const handleEdit = (entry: OvertimeEntry) => {
     setEditingEntry(entry);
     setIsEditModalOpen(true);
@@ -59,31 +87,43 @@ export default function Overtime() {
   };
 
   const handleDelete = async (entry: OvertimeEntry) => {
-    if (!window.confirm('Tem certeza que deseja excluir esta hora extra?')) return;
+    setConfirmDeleteEntry(entry);
     setOpenMenuId(null);
-    
+  };
+
+  const confirmDelete = async () => {
+    if (!confirmDeleteEntry) return;
     try {
-      if (entry.id.startsWith('auto-')) {
+      setIsSubmitting(true);
+      if (confirmDeleteEntry.id.startsWith('auto-')) {
         const { error } = await supabase.from('overtime_entries').insert([{
-          user_id: entry.user_id,
-          date: entry.date,
-          client: entry.client,
-          reason: entry.reason,
-          type: entry.type,
+          user_id: confirmDeleteEntry.user_id,
+          date: confirmDeleteEntry.date,
+          client: confirmDeleteEntry.client,
+          reason: confirmDeleteEntry.reason,
+          type: confirmDeleteEntry.type,
           hours: '00:00',
           observation: 'Excluído manualmente'
         }]);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('overtime_entries')
+        const { data, error } = await supabase.from('overtime_entries')
           .update({ hours: '00:00', observation: 'Excluído manualmente' })
-          .eq('id', entry.id);
+          .eq('id', confirmDeleteEntry.id)
+          .select();
+          
         if (error) throw error;
+        if (!data || data.length === 0) {
+          throw new Error('Sem permissão para excluir ou registro não encontrado no banco de dados.');
+        }
       }
-      fetchEntries();
-    } catch (error) {
+      await fetchEntries();
+      setConfirmDeleteEntry(null);
+    } catch (error: any) {
       console.error('Error deleting entry:', error);
-      alert('Erro ao excluir hora extra.');
+      alert('Erro ao excluir hora extra: ' + (error.message || JSON.stringify(error)));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -93,6 +133,10 @@ export default function Overtime() {
 
     setIsSubmitting(true);
     try {
+      const prefix = editingEntry.isNoOverride ? '[NO_OVERRIDE] ' : '';
+      const paymentTag = editingEntry.isPaid ? `[PAGO:${editingEntry.paidAt}] ` : '';
+      const fullObservation = (prefix + paymentTag + (editingEntry.observation || '')).trim();
+
       if (editingEntry.id.startsWith('auto-')) {
         const { error } = await supabase.from('overtime_entries').insert([{
           user_id: editingEntry.user_id,
@@ -101,21 +145,25 @@ export default function Overtime() {
           reason: editingEntry.reason,
           type: editingEntry.type,
           hours: editingEntry.hours,
-          observation: editingEntry.observation
+          observation: fullObservation
         }]);
         if (error) throw error;
       } else {
-        const prefix = editingEntry.isNoOverride ? '[NO_OVERRIDE] ' : '';
-        const { error } = await supabase.from('overtime_entries')
+        const { data, error } = await supabase.from('overtime_entries')
           .update({
             client: editingEntry.client,
             reason: editingEntry.reason,
             type: editingEntry.type,
             hours: editingEntry.hours,
-            observation: prefix + editingEntry.observation
+            observation: fullObservation
           })
-          .eq('id', editingEntry.id);
+          .eq('id', editingEntry.id)
+          .select();
+          
         if (error) throw error;
+        if (!data || data.length === 0) {
+          throw new Error('Sem permissão para editar ou registro não encontrado no banco de dados.');
+        }
       }
       setIsEditModalOpen(false);
       setEditingEntry(null);
@@ -365,7 +413,7 @@ export default function Overtime() {
           const isWeekend = dayOfWeek === 0 || dayOfWeek === 6; // 0 = Sunday, 6 = Saturday
 
           let extraMinutes = 0;
-          let type = 'Horas Extras Automáticas';
+          let type = 'Hora Extra (Dia Útil)';
 
           if (isWeekend) {
             extraMinutes = data.minutes; // All hours are overtime
@@ -403,9 +451,19 @@ export default function Overtime() {
           if (entry.hours !== '00:00') {
             let obs = entry.observation || '';
             let isNoOverride = false;
+            let isPaid = false;
+            let paidAt = '';
+
             if (obs.startsWith('[NO_OVERRIDE]')) {
               isNoOverride = true;
               obs = obs.replace('[NO_OVERRIDE]', '').trim();
+            }
+
+            const paidMatch = obs.match(/\[PAGO:(.*?)\]/);
+            if (paidMatch) {
+              isPaid = true;
+              paidAt = paidMatch[1];
+              obs = obs.replace(paidMatch[0], '').trim();
             }
 
             finalEntries.push({
@@ -419,7 +477,9 @@ export default function Overtime() {
               hours: entry.hours,
               observation: obs,
               created_at: entry.created_at,
-              isNoOverride
+              isNoOverride,
+              isPaid,
+              paidAt
             });
           }
         });
@@ -460,7 +520,8 @@ export default function Overtime() {
       searchQuery,
       selectedDev,
       startDate,
-      endDate
+      endDate,
+      status: statusFilter
     });
   };
 
@@ -469,23 +530,28 @@ export default function Overtime() {
     setSelectedDev('all');
     setStartDate('');
     setEndDate('');
+    setStatusFilter('all');
     setAppliedFilters({
       searchQuery: '',
       selectedDev: 'all',
       startDate: '',
-      endDate: ''
+      endDate: '',
+      status: 'all'
     });
   };
 
   const filteredEntries = entries.filter(entry => {
-    const { searchQuery, selectedDev, startDate, endDate } = appliedFilters;
+    const { searchQuery, selectedDev, startDate, endDate, status } = appliedFilters;
     const matchesSearch = entry.reason.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           entry.client.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesDev = selectedDev === 'all' || entry.devName === selectedDev;
     const matchesStartDate = !startDate || entry.date >= startDate;
     const matchesEndDate = !endDate || entry.date <= endDate;
+    const matchesStatus = status === 'all' || 
+                          (status === 'paid' && entry.isPaid) || 
+                          (status === 'pending' && !entry.isPaid);
     
-    return matchesSearch && matchesDev && matchesStartDate && matchesEndDate;
+    return matchesSearch && matchesDev && matchesStartDate && matchesEndDate && matchesStatus;
   });
 
   const uniqueDevs = Array.from(new Set(entries.map(e => e.devName))).sort();
@@ -502,6 +568,117 @@ export default function Overtime() {
     return acc;
   }, 0);
   const totalHoursFormatted = `${Math.floor(totalMinutes / 60).toString().padStart(2, '0')}:${(totalMinutes % 60).toString().padStart(2, '0')}`;
+
+  // Group entries for payment view
+  const paymentEntriesByDev = React.useMemo(() => {
+    const periodEntries = entries.filter(entry => {
+      const matchesStart = !paymentStartDate || entry.date >= paymentStartDate;
+      const matchesEnd = !paymentEndDate || entry.date <= paymentEndDate;
+      return matchesStart && matchesEnd;
+    });
+
+    const grouped: Record<string, { userId: string, devName: string, totalMinutes: number, paidMinutes: number, pendingMinutes: number, pendingEntries: OvertimeEntry[] }> = {};
+
+    periodEntries.forEach(entry => {
+      if (!grouped[entry.user_id]) {
+        grouped[entry.user_id] = {
+          userId: entry.user_id,
+          devName: entry.devName,
+          totalMinutes: 0,
+          paidMinutes: 0,
+          pendingMinutes: 0,
+          pendingEntries: []
+        };
+      }
+
+      const parts = entry.hours.split(':');
+      if (parts.length === 2) {
+        const [hrs, mins] = parts.map(Number);
+        if (!isNaN(hrs) && !isNaN(mins)) {
+          const minutes = (hrs * 60) + mins;
+          grouped[entry.user_id].totalMinutes += minutes;
+          if (entry.isPaid) {
+            grouped[entry.user_id].paidMinutes += minutes;
+          } else {
+            grouped[entry.user_id].pendingMinutes += minutes;
+            grouped[entry.user_id].pendingEntries.push(entry);
+          }
+        }
+      }
+    });
+
+    return Object.values(grouped).sort((a, b) => a.devName.localeCompare(b.devName));
+  }, [entries, paymentStartDate, paymentEndDate]);
+
+  const handlePay = async (userId: string, pendingEntries: OvertimeEntry[]) => {
+    setConfirmPayDev({ userId, pendingEntries });
+  };
+
+  const confirmPay = async () => {
+    if (!confirmPayDev) return;
+    const { pendingEntries } = confirmPayDev;
+
+    try {
+      setIsSubmitting(true);
+      const today = getLocalDateString();
+      const paymentTag = `[PAGO:${today}]`;
+
+      const updates = [];
+      const inserts = [];
+
+      for (const entry of pendingEntries) {
+        if (entry.id.startsWith('auto-')) {
+          // Need to insert
+          inserts.push({
+            user_id: entry.user_id,
+            date: entry.date,
+            client: entry.client,
+            reason: entry.reason,
+            type: entry.type,
+            hours: entry.hours,
+            observation: `${paymentTag} ${entry.observation || ''}`.trim()
+          });
+        } else {
+          // Need to update
+          let newObs = entry.observation || '';
+          if (entry.isNoOverride) {
+            newObs = `[NO_OVERRIDE] ${paymentTag} ${newObs}`.trim();
+          } else {
+            newObs = `${paymentTag} ${newObs}`.trim();
+          }
+          updates.push({
+            id: entry.id,
+            observation: newObs
+          });
+        }
+      }
+
+      for (const insert of inserts) {
+        const { error } = await supabase.from('overtime_entries').insert([insert]);
+        if (error) throw error;
+      }
+
+      for (const update of updates) {
+        const { data, error } = await supabase.from('overtime_entries')
+          .update({ observation: update.observation })
+          .eq('id', update.id)
+          .select();
+          
+        if (error) throw error;
+        if (!data || data.length === 0) {
+          throw new Error('Sem permissão para atualizar ou registro não encontrado no banco de dados.');
+        }
+      }
+
+      await fetchEntries();
+      setConfirmPayDev(null);
+    } catch (error: any) {
+      console.error('Error paying overtime:', error);
+      alert('Erro ao registrar pagamento: ' + (error.message || JSON.stringify(error)));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -545,204 +722,336 @@ export default function Overtime() {
         </div>
       </div>
 
-      {/* Filters Bar */}
-      <div className="flex flex-col gap-4 bg-[#111111] p-4 rounded-xl border border-zinc-800/80">
-        <div className="flex flex-wrap gap-4 items-center">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                const newDev = selectedDev === profile?.name ? 'all' : (profile?.name || 'all');
-                setSelectedDev(newDev);
-                setAppliedFilters(prev => ({ ...prev, selectedDev: newDev }));
-              }}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors border ${
-                selectedDev === profile?.name
-                  ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
-                  : 'bg-[#0A0A0A] text-zinc-400 border-zinc-800 hover:text-zinc-200 hover:border-zinc-700'
-              }`}
-            >
-              <User className="w-4 h-4" />
-              Minhas Horas
-            </button>
-          </div>
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-            <input
-              type="text"
-              placeholder="Buscar motivo ou cliente..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleApplyFilters()}
-              className="w-full pl-9 pr-4 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
-            />
-          </div>
-          <div className="relative flex-1 min-w-[160px]">
-            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-            <select
-              value={selectedDev}
-              onChange={(e) => setSelectedDev(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all appearance-none"
-            >
-              <option value="all">Todos os Desenvolvedores</option>
-              {uniqueDevs.map(dev => (
-                <option key={dev} value={dev}>{dev}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="w-full sm:w-auto px-3 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-all"
-              style={{ colorScheme: 'dark' }}
-            />
-            <span className="text-zinc-500 text-sm">até</span>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="w-full sm:w-auto px-3 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-all"
-              style={{ colorScheme: 'dark' }}
-            />
-          </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
-            <button
-              onClick={handleClearFilters}
-              className="flex-1 sm:flex-none px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg text-sm font-medium transition-colors border border-zinc-700/50 flex items-center justify-center gap-2"
-              title="Limpar todos os filtros"
-            >
-              <X className="w-4 h-4" />
-              <span className="hidden sm:inline">Limpar</span>
-            </button>
-            <button
-              onClick={handleApplyFilters}
-              className="flex-1 sm:flex-none px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20"
-            >
-              Buscar
-            </button>
-          </div>
-        </div>
+      {/* Tabs */}
+      <div className="flex items-center gap-4 border-b border-zinc-800">
+        <button
+          onClick={() => setActiveTab('registros')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'registros'
+              ? 'border-indigo-500 text-indigo-400'
+              : 'border-transparent text-zinc-400 hover:text-zinc-300'
+          }`}
+        >
+          Registros
+        </button>
+        <button
+          onClick={() => setActiveTab('pagamentos')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'pagamentos'
+              ? 'border-indigo-500 text-indigo-400'
+              : 'border-transparent text-zinc-400 hover:text-zinc-300'
+          }`}
+        >
+          Pagamentos
+        </button>
       </div>
 
-      {/* Table */}
-      <div className="bg-[#111111] border border-zinc-800/80 rounded-xl overflow-hidden flex-1 flex flex-col">
-        <div className="overflow-x-auto flex-1">
-          <table className="w-full text-left text-sm text-zinc-300">
-            <thead className="bg-[#1A1A1A] text-xs uppercase font-medium text-zinc-400 tracking-wide border-b border-zinc-800/80 sticky top-0 z-10">
-              <tr>
-                <th className="px-4 py-3 whitespace-nowrap">Dev</th>
-                <th className="px-4 py-3 whitespace-nowrap">Data</th>
-                <th className="px-4 py-3 whitespace-nowrap">Cliente</th>
-                <th className="px-4 py-3">Motivo</th>
-                <th className="px-4 py-3 whitespace-nowrap">Tipo</th>
-                <th className="px-4 py-3">Observação</th>
-                <th className="px-4 py-3 whitespace-nowrap text-right">Horas Extras</th>
-                <th className="px-4 py-3 whitespace-nowrap text-right w-10"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-800/50">
-              {isLoading ? (
-                <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center">
-                    <div className="flex justify-center">
-                      <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-                    </div>
-                  </td>
-                </tr>
-              ) : filteredEntries.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-zinc-500">
-                    Nenhuma hora extra encontrada.
-                  </td>
-                </tr>
-              ) : (
-                filteredEntries.map((entry) => (
-                  <tr key={entry.id} className="hover:bg-zinc-800/30 transition-colors group">
-                    <td className="px-4 py-3 font-medium text-zinc-200 whitespace-nowrap">
-                      {entry.devName}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {new Date(entry.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2 py-1 rounded-md bg-zinc-800/50 text-zinc-300 text-xs font-medium border border-zinc-700/50">
-                        {entry.client || '-'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-zinc-300">
-                      {entry.reason}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2 py-1 rounded-md bg-indigo-500/10 text-indigo-400 text-xs font-medium border border-indigo-500/20">
-                        {entry.type}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-zinc-400 text-xs">
-                      {entry.observation || '-'}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-right font-mono text-emerald-400 font-medium">
-                      {entry.hours}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-right">
-                      <div className="relative">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOpenMenuId(openMenuId === entry.id ? null : entry.id);
-                          }}
-                          className="p-1 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 rounded transition-colors"
-                        >
-                          <MoreVertical className="w-4 h-4" />
-                        </button>
-                        
-                        {openMenuId === entry.id && (
-                          <div className="absolute right-0 mt-1 w-36 bg-[#1A1A1A] border border-zinc-800 rounded-lg shadow-xl z-50 py-1">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEdit(entry);
-                              }}
-                              className="w-full px-4 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white flex items-center gap-2"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                              Editar
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDelete(entry);
-                              }}
-                              className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-zinc-800 hover:text-red-300 flex items-center gap-2"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              Excluir
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </td>
+      {activeTab === 'registros' ? (
+        <>
+          {/* Filters Bar */}
+          <div className="flex flex-col gap-4 bg-[#111111] p-4 rounded-xl border border-zinc-800/80">
+            <div className="flex flex-wrap gap-4 items-center">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    const newDev = selectedDev === profile?.name ? 'all' : (profile?.name || 'all');
+                    setSelectedDev(newDev);
+                    setAppliedFilters(prev => ({ ...prev, selectedDev: newDev }));
+                  }}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors border ${
+                    selectedDev === profile?.name
+                      ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
+                      : 'bg-[#0A0A0A] text-zinc-400 border-zinc-800 hover:text-zinc-200 hover:border-zinc-700'
+                  }`}
+                >
+                  <User className="w-4 h-4" />
+                  Minhas Horas
+                </button>
+              </div>
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                <input
+                  type="text"
+                  placeholder="Buscar motivo ou cliente..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleApplyFilters()}
+                  className="w-full pl-9 pr-4 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                />
+              </div>
+              <div className="relative flex-1 min-w-[160px]">
+                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                <select
+                  value={selectedDev}
+                  onChange={(e) => setSelectedDev(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all appearance-none"
+                >
+                  <option value="all">Todos os Desenvolvedores</option>
+                  {uniqueDevs.map(dev => (
+                    <option key={dev} value={dev}>{dev}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="relative flex-1 min-w-[140px]">
+                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as any)}
+                  className="w-full pl-9 pr-4 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all appearance-none"
+                >
+                  <option value="all">Todos os Status</option>
+                  <option value="pending">Pendentes</option>
+                  <option value="paid">Pagas</option>
+                </select>
+              </div>
+              
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full sm:w-auto px-3 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-all"
+                  style={{ colorScheme: 'dark' }}
+                />
+                <span className="text-zinc-500 text-sm">até</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full sm:w-auto px-3 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-all"
+                  style={{ colorScheme: 'dark' }}
+                />
+              </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                <button
+                  onClick={handleClearFilters}
+                  className="flex-1 sm:flex-none px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg text-sm font-medium transition-colors border border-zinc-700/50 flex items-center justify-center gap-2"
+                  title="Limpar todos os filtros"
+                >
+                  <X className="w-4 h-4" />
+                  <span className="hidden sm:inline">Limpar</span>
+                </button>
+                <button
+                  onClick={handleApplyFilters}
+                  className="flex-1 sm:flex-none px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20"
+                >
+                  Buscar
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="bg-[#111111] border border-zinc-800/80 rounded-xl overflow-hidden flex-1 flex flex-col">
+            <div className="overflow-x-auto flex-1">
+              <table className="w-full text-left text-sm text-zinc-300">
+                <thead className="bg-[#1A1A1A] text-xs uppercase font-medium text-zinc-400 tracking-wide border-b border-zinc-800/80 sticky top-0 z-10">
+                  <tr>
+                    <th className="px-4 py-3 whitespace-nowrap">Dev</th>
+                    <th className="px-4 py-3 whitespace-nowrap">Data</th>
+                    <th className="px-4 py-3 whitespace-nowrap">Cliente</th>
+                    <th className="px-4 py-3">Motivo</th>
+                    <th className="px-4 py-3 whitespace-nowrap">Tipo</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Observação</th>
+                    <th className="px-4 py-3 whitespace-nowrap text-right">Horas Extras</th>
+                    <th className="px-4 py-3 whitespace-nowrap text-right w-10"></th>
                   </tr>
-                ))
+                </thead>
+                <tbody className="divide-y divide-zinc-800/50">
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={9} className="px-4 py-8 text-center">
+                        <div className="flex justify-center">
+                          <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : filteredEntries.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="px-4 py-8 text-center text-zinc-500">
+                        Nenhuma hora extra encontrada.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredEntries.map((entry) => (
+                      <tr key={entry.id} className="hover:bg-zinc-800/30 transition-colors group">
+                        <td className="px-4 py-3 font-medium text-zinc-200 whitespace-nowrap">
+                          {entry.devName}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {new Date(entry.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="inline-flex items-center px-2 py-1 rounded-md bg-zinc-800/50 text-zinc-300 text-xs font-medium border border-zinc-700/50">
+                            {entry.client || '-'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-zinc-300">
+                          {entry.reason}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="inline-flex items-center px-2 py-1 rounded-md bg-indigo-500/10 text-indigo-400 text-xs font-medium border border-indigo-500/20">
+                            {entry.type}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {entry.isPaid ? (
+                            <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" title={`Pago em ${new Date(entry.paidAt + 'T12:00:00Z').toLocaleDateString('pt-BR')}`}>
+                              Pago
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                              Pendente
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-zinc-400 text-xs">
+                          {entry.observation || '-'}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-right font-mono text-emerald-400 font-medium">
+                          {entry.hours}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-right">
+                          <div className="relative">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenMenuId(openMenuId === entry.id ? null : entry.id);
+                              }}
+                              className="p-1 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 rounded transition-colors"
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+                            
+                            {openMenuId === entry.id && (
+                              <div className="absolute right-0 mt-1 w-36 bg-[#1A1A1A] border border-zinc-800 rounded-lg shadow-xl z-50 py-1">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEdit(entry);
+                                  }}
+                                  className="w-full px-4 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white flex items-center gap-2"
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                  Editar
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDelete(entry);
+                                  }}
+                                  className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-zinc-800 hover:text-red-300 flex items-center gap-2"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                  Excluir
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+                {filteredEntries.length > 0 && (
+                  <tfoot className="bg-[#1A1A1A] border-t border-zinc-800/80 sticky bottom-0">
+                    <tr>
+                      <td colSpan={7} className="px-4 py-3 text-right font-medium text-zinc-300">
+                        Total de Horas Extras:
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono text-emerald-400 font-bold">
+                        {totalHoursFormatted}
+                      </td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="flex-1 bg-[#111111] rounded-xl border border-zinc-800/80 p-6 flex flex-col overflow-hidden">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-medium text-zinc-100">Pagamento de Horas Extras</h3>
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-zinc-500" />
+              <input
+                type="date"
+                value={paymentStartDate}
+                onChange={(e) => setPaymentStartDate(e.target.value)}
+                className="bg-zinc-900/50 border border-zinc-800 rounded-lg text-sm text-zinc-300 px-3 py-2 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 [color-scheme:dark]"
+              />
+              <span className="text-zinc-500 text-sm">até</span>
+              <input
+                type="date"
+                value={paymentEndDate}
+                onChange={(e) => setPaymentEndDate(e.target.value)}
+                className="bg-zinc-900/50 border border-zinc-800 rounded-lg text-sm text-zinc-300 px-3 py-2 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 [color-scheme:dark]"
+              />
+            </div>
+          </div>
+          
+          <div className="flex-1 overflow-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {paymentEntriesByDev.map((devData) => (
+                <div key={devData.userId} className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5 flex flex-col">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-sm text-indigo-300 font-bold">
+                      {devData.devName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <h4 className="text-zinc-200 font-medium">{devData.devName}</h4>
+                      <p className="text-xs text-zinc-500">Resumo do Mês</p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-3 mb-6 flex-1">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-zinc-400">Total de Horas:</span>
+                      <span className="text-zinc-200 font-medium font-mono">
+                        {`${Math.floor(devData.totalMinutes / 60).toString().padStart(2, '0')}:${(devData.totalMinutes % 60).toString().padStart(2, '0')}`}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-zinc-400">Horas Pagas:</span>
+                      <span className="text-emerald-400 font-medium font-mono">
+                        {`${Math.floor(devData.paidMinutes / 60).toString().padStart(2, '0')}:${(devData.paidMinutes % 60).toString().padStart(2, '0')}`}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm pt-2 border-t border-zinc-800/80">
+                      <span className="text-zinc-300 font-medium">Horas Pendentes:</span>
+                      <span className="text-amber-400 font-bold font-mono">
+                        {`${Math.floor(devData.pendingMinutes / 60).toString().padStart(2, '0')}:${(devData.pendingMinutes % 60).toString().padStart(2, '0')}`}
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => handlePay(devData.userId, devData.pendingEntries)}
+                    disabled={devData.pendingMinutes === 0}
+                    className={`w-full py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                      devData.pendingMinutes > 0
+                        ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
+                        : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                    }`}
+                  >
+                    {devData.pendingMinutes > 0 ? 'Pagar Pendentes' : 'Tudo Pago'}
+                  </button>
+                </div>
+              ))}
+              
+              {paymentEntriesByDev.length === 0 && (
+                <div className="col-span-full py-12 text-center border border-dashed border-zinc-800 rounded-xl">
+                  <p className="text-zinc-500">Nenhuma hora extra registrada neste mês.</p>
+                </div>
               )}
-            </tbody>
-            {filteredEntries.length > 0 && (
-              <tfoot className="bg-[#1A1A1A] border-t border-zinc-800/80 sticky bottom-0">
-                <tr>
-                  <td colSpan={6} className="px-4 py-3 text-right font-medium text-zinc-300">
-                    Total de Horas Extras:
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-emerald-400 font-bold">
-                    {totalHoursFormatted}
-                  </td>
-                  <td></td>
-                </tr>
-              </tfoot>
-            )}
-          </table>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Edit Modal */}
       {isEditModalOpen && editingEntry && (
@@ -983,6 +1292,78 @@ export default function Overtime() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Pay Modal */}
+      {confirmPayDev && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-[#111111] rounded-2xl shadow-2xl border border-zinc-800/80 overflow-hidden">
+            <div className="p-6">
+              <h3 className="text-lg font-semibold text-zinc-100 mb-2">Confirmar Pagamento</h3>
+              <p className="text-sm text-zinc-400 mb-6">
+                Deseja marcar as horas extras pendentes deste desenvolvedor como pagas?
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setConfirmPayDev(null)}
+                  className="px-4 py-2 text-sm font-medium text-zinc-400 hover:text-zinc-200 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmPay}
+                  disabled={isSubmitting}
+                  className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-600/50 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-emerald-500/20 flex items-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Processando...
+                    </>
+                  ) : (
+                    'Confirmar Pagamento'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Delete Modal */}
+      {confirmDeleteEntry && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-[#111111] rounded-2xl shadow-2xl border border-zinc-800/80 overflow-hidden">
+            <div className="p-6">
+              <h3 className="text-lg font-semibold text-zinc-100 mb-2">Excluir Hora Extra</h3>
+              <p className="text-sm text-zinc-400 mb-6">
+                Tem certeza que deseja excluir esta hora extra?
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setConfirmDeleteEntry(null)}
+                  className="px-4 py-2 text-sm font-medium text-zinc-400 hover:text-zinc-200 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  disabled={isSubmitting}
+                  className="px-6 py-2 bg-red-600 hover:bg-red-500 disabled:bg-red-600/50 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-red-500/20 flex items-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Excluindo...
+                    </>
+                  ) : (
+                    'Excluir'
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

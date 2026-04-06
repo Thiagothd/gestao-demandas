@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { LogIn, Lock, User, AlertTriangle, UserPlus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -15,6 +15,10 @@ export default function Login() {
     if (userStr.includes('@')) return userStr;
     return `${userStr.toLowerCase().replace(/\s+/g, '')}@sistema.local`;
   };
+
+  useEffect(() => {
+    document.title = isLogin ? 'Login | Gestão & Alinhamento' : 'Cadastro | Gestão & Alinhamento';
+  }, [isLogin]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
