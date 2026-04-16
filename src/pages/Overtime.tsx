@@ -21,6 +21,14 @@ interface OvertimeEntry {
   paidAt?: string;
 }
 
+const formatMinutes = (totalMinutes: number) => {
+  const isNegative = totalMinutes < 0;
+  const absMinutes = Math.abs(totalMinutes);
+  const hrs = Math.floor(absMinutes / 60);
+  const mins = absMinutes % 60;
+  return `${isNegative ? '-' : ''}${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+};
+
 export default function Overtime() {
   const { user, profile } = useAuth();
   const [entries, setEntries] = useState<OvertimeEntry[]>([]);
@@ -562,12 +570,16 @@ export default function Overtime() {
     if (parts.length === 2) {
       const [hrs, mins] = parts.map(Number);
       if (!isNaN(hrs) && !isNaN(mins)) {
-        return acc + (hrs * 60) + mins;
+        const minutes = (hrs * 60) + mins;
+        if (entry.type === 'Banco de Horas (Débito)') {
+          return acc - minutes;
+        }
+        return acc + minutes;
       }
     }
     return acc;
   }, 0);
-  const totalHoursFormatted = `${Math.floor(totalMinutes / 60).toString().padStart(2, '0')}:${(totalMinutes % 60).toString().padStart(2, '0')}`;
+  const totalHoursFormatted = formatMinutes(totalMinutes);
 
   // Group entries for payment view
   const paymentEntriesByDev = React.useMemo(() => {
@@ -595,7 +607,11 @@ export default function Overtime() {
       if (parts.length === 2) {
         const [hrs, mins] = parts.map(Number);
         if (!isNaN(hrs) && !isNaN(mins)) {
-          const minutes = (hrs * 60) + mins;
+          let minutes = (hrs * 60) + mins;
+          if (entry.type === 'Banco de Horas (Débito)') {
+            minutes = -minutes;
+          }
+          
           grouped[entry.user_id].totalMinutes += minutes;
           if (entry.isPaid) {
             grouped[entry.user_id].paidMinutes += minutes;
@@ -910,8 +926,8 @@ export default function Overtime() {
                         <td className="px-4 py-3 text-zinc-400 text-xs">
                           {entry.observation || '-'}
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-right font-mono text-emerald-400 font-medium">
-                          {entry.hours}
+                        <td className={`px-4 py-3 whitespace-nowrap text-right font-mono font-medium ${entry.type === 'Banco de Horas (Débito)' ? 'text-red-400' : 'text-emerald-400'}`}>
+                          {entry.type === 'Banco de Horas (Débito)' ? '-' : ''}{entry.hours}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-right">
                           <div className="relative">
@@ -1011,20 +1027,20 @@ export default function Overtime() {
                   <div className="space-y-3 mb-6 flex-1">
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-zinc-400">Total de Horas:</span>
-                      <span className="text-zinc-200 font-medium font-mono">
-                        {`${Math.floor(devData.totalMinutes / 60).toString().padStart(2, '0')}:${(devData.totalMinutes % 60).toString().padStart(2, '0')}`}
+                      <span className={`font-medium font-mono ${devData.totalMinutes < 0 ? 'text-red-400' : 'text-zinc-200'}`}>
+                        {formatMinutes(devData.totalMinutes)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-zinc-400">Horas Pagas:</span>
-                      <span className="text-emerald-400 font-medium font-mono">
-                        {`${Math.floor(devData.paidMinutes / 60).toString().padStart(2, '0')}:${(devData.paidMinutes % 60).toString().padStart(2, '0')}`}
+                      <span className={`font-medium font-mono ${devData.paidMinutes < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                        {formatMinutes(devData.paidMinutes)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center text-sm pt-2 border-t border-zinc-800/80">
                       <span className="text-zinc-300 font-medium">Horas Pendentes:</span>
-                      <span className="text-amber-400 font-bold font-mono">
-                        {`${Math.floor(devData.pendingMinutes / 60).toString().padStart(2, '0')}:${(devData.pendingMinutes % 60).toString().padStart(2, '0')}`}
+                      <span className={`font-bold font-mono ${devData.pendingMinutes < 0 ? 'text-red-400' : 'text-amber-400'}`}>
+                        {formatMinutes(devData.pendingMinutes)}
                       </span>
                     </div>
                   </div>
@@ -1130,11 +1146,12 @@ export default function Overtime() {
                   onChange={(e) => setEditingEntry({ ...editingEntry, type: e.target.value })}
                   className="w-full px-3 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all appearance-none"
                 >
-                  <option value="Horas Extras Automáticas">Horas Extras Automáticas</option>
+                  <option value="Hora Extra (Dia Útil)">Hora Extra (Dia Útil)</option>
                   <option value="Hora Extra (Fim de Semana)">Hora Extra (Fim de Semana)</option>
-                  <option value="Horas Extras">Horas Extras (Manual)</option>
+                  <option value="Horas Extras Automáticas">Horas Extras Automáticas</option>
                   <option value="Plantão">Plantão</option>
                   <option value="Sobreaviso">Sobreaviso</option>
+                  <option value="Banco de Horas (Débito)">Banco de Horas (Débito)</option>
                 </select>
               </div>
 
@@ -1254,6 +1271,7 @@ export default function Overtime() {
                   <option value="Hora Extra (Fim de Semana)">Hora Extra (Fim de Semana)</option>
                   <option value="Plantão">Plantão</option>
                   <option value="Sobreaviso">Sobreaviso</option>
+                  <option value="Banco de Horas (Débito)">Banco de Horas (Débito)</option>
                 </select>
               </div>
 
