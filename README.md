@@ -1,4 +1,4 @@
-# Sistema de Gestão de Demandas — Jidd Sistemas
+# Sistema de Gestão de Demandas
 
 > Uma solução desenvolvida pela própria equipe para substituir planilhas Excel e centralizar o controle de projetos, horas e horas extras em um único sistema web.
 
