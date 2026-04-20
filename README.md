@@ -116,4 +116,4 @@ npm run lint      # Verificação de tipos TypeScript
 
 ---
 
-*Jidd Sistemas · [gestao-demandas-lyart.vercel.app](https://gestao-demandas-lyart.vercel.app)*
+*[gestao-demandas-lyart.vercel.app](https://gestao-demandas-lyart.vercel.app)*
