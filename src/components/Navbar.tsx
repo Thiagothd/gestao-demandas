@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LayoutDashboard, LogOut, Clock, Users } from 'lucide-react';
+import { LayoutDashboard, LogOut, Clock, Timer, Users } from 'lucide-react';
 
 export default function Navbar() {
   const { profile, signOut } = useAuth();
@@ -41,7 +41,7 @@ export default function Navbar() {
               <span className="hidden sm:inline">Apontamentos</span>
             </Link>
             <Link to="/overtime" className={linkClass('/overtime')}>
-              <Clock className="w-4 h-4" />
+              <Timer className="w-4 h-4" />
               <span className="hidden sm:inline">Horas Extras</span>
             </Link>
             {isManager && (

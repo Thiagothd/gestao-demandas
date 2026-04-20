@@ -139,6 +139,7 @@ export default function Dashboard() {
   }, [demands]);
 
   const onDragEnd = async (result: DropResult) => {
+    if (!isManager) return;
     if (!result.destination) return;
     const { source, destination, draggableId } = result;
     
@@ -446,14 +447,16 @@ export default function Dashboard() {
                           const slaColor = isOverdue && demand.status !== 'Concluído' ? 'text-red-400' : 'text-zinc-400 tracking-wide';
 
                           return (
-                            <Draggable key={demand.id} draggableId={demand.id} index={index}>
+                            <Draggable key={demand.id} draggableId={demand.id} index={index} isDragDisabled={!isManager}>
                               {(provided, snapshot) => (
                                 <div
                                   ref={provided.innerRef}
                                   {...provided.draggableProps}
                                   {...provided.dragHandleProps}
                                   onClick={() => setSelectedDemand(demand)}
-                                  className={`bg-[#1A1A1A] border border-white/5 rounded-xl p-4 transition-all cursor-grab active:cursor-grabbing group ${
+                                  className={`bg-[#1A1A1A] border border-white/5 rounded-xl p-4 transition-all group ${
+                                    isManager ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
+                                  } ${
                                     snapshot.isDragging ? 'shadow-2xl shadow-black/80 border-indigo-500/50 rotate-2 scale-105' : 'hover:border-white/10 hover:shadow-lg hover:shadow-black/40'
                                   }`}
                                   style={{ ...provided.draggableProps.style }}

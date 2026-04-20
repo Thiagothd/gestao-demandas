@@ -83,6 +83,13 @@ export default function Timesheet() {
   const [editingEntry, setEditingEntry] = useState<UnifiedTimeEntry | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<UnifiedTimeEntry | null>(null);
+
+  const showToast = (type: 'success' | 'error', message: string) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 3500);
+  };
 
   const parseHours = (timeStr: string) => {
     if (!timeStr) return 0;
@@ -96,16 +103,20 @@ export default function Timesheet() {
     setOpenMenuId(null);
   };
 
-  const handleDelete = async (entry: UnifiedTimeEntry) => {
-    if (!window.confirm('Tem certeza que deseja excluir este apontamento?')) return;
+  const handleDelete = (entry: UnifiedTimeEntry) => {
+    setConfirmDelete(entry);
     setOpenMenuId(null);
-    
+  };
+
+  const confirmDeleteEntry = async () => {
+    if (!confirmDelete) return;
+    const entry = confirmDelete;
+    setConfirmDelete(null);
     try {
       if (entry.type === 'manual') {
         const { error } = await supabase.from('time_entries').delete().eq('id', entry.id);
         if (error) throw error;
       } else if (entry.type === 'demand' && entry.demandId) {
-        // Update demand checklist to remove the logged hours and mark as not completed
         const { data: demand } = await supabase.from('demands').select('checklist').eq('id', entry.demandId).single();
         if (demand && demand.checklist) {
           const newChecklist = demand.checklist.map((g: any) => {
@@ -114,13 +125,7 @@ export default function Timesheet() {
                 ...g,
                 subItems: g.subItems.map((s: any) => {
                   if (s.id === entry.subItemId) {
-                    return {
-                      ...s,
-                      completed: false,
-                      logged_hours: 0,
-                      completed_at: null,
-                      completed_by: null
-                    };
+                    return { ...s, completed: false, logged_hours: 0, completed_at: null, completed_by: null };
                   }
                   return s;
                 })
@@ -135,7 +140,7 @@ export default function Timesheet() {
       fetchEntries();
     } catch (error) {
       console.error('Error deleting entry:', error);
-      alert('Erro ao excluir apontamento.');
+      showToast('error', 'Erro ao excluir apontamento.');
     }
   };
 
@@ -187,7 +192,7 @@ export default function Timesheet() {
       fetchEntries();
     } catch (error) {
       console.error('Error saving entry:', error);
-      alert('Erro ao salvar apontamento.');
+      showToast('error', 'Erro ao salvar apontamento.');
     } finally {
       setIsSubmitting(false);
     }
@@ -329,7 +334,7 @@ export default function Timesheet() {
       fetchEntries();
     } catch (error) {
       console.error('Error adding entry:', error);
-      alert('Erro ao adicionar apontamento.');
+      showToast('error', 'Erro ao adicionar apontamento.');
     } finally {
       setIsSubmitting(false);
     }
@@ -389,12 +394,12 @@ export default function Timesheet() {
         if (entriesToInsert.length > 0) {
           const { error } = await supabase.from('time_entries').insert(entriesToInsert);
           if (error) throw error;
-          alert(`${entriesToInsert.length} registros importados com sucesso!`);
+          showToast('success', `${entriesToInsert.length} registros importados com sucesso!`);
           fetchEntries();
         }
       } catch (error) {
         console.error('Error importing data:', error);
-        alert('Erro ao importar planilha. Verifique o formato dos dados.');
+        showToast('error', 'Erro ao importar planilha. Verifique o formato dos dados.');
       }
       e.target.value = '';
     };
@@ -488,6 +493,37 @@ export default function Timesheet() {
 
   return (
     <div className="space-y-6 h-full flex flex-col">
+      {/* Toast */}
+      {toast && (
+        <div className={`fixed top-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border text-sm font-medium ${
+          toast.type === 'success'
+            ? 'bg-green-500/10 border-green-500/30 text-green-400'
+            : 'bg-red-500/10 border-red-500/30 text-red-400'
+        }`}>
+          {toast.message}
+        </div>
+      )}
+
+      {/* Confirm Delete Modal */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-sm bg-[#111111] rounded-2xl shadow-2xl border border-zinc-800/80 p-6">
+            <h3 className="text-base font-semibold text-zinc-100 mb-2">Excluir Apontamento</h3>
+            <p className="text-sm text-zinc-400 mb-6">Tem certeza que deseja excluir este apontamento?</p>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setConfirmDelete(null)}
+                className="px-4 py-2 text-sm font-medium text-zinc-400 hover:text-zinc-200 transition-colors">
+                Cancelar
+              </button>
+              <button onClick={confirmDeleteEntry}
+                className="px-5 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm font-medium transition-colors">
+                Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header Actions */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -641,7 +677,7 @@ export default function Timesheet() {
                     <td className="px-4 py-3 whitespace-nowrap text-zinc-300">{entry.client}</td>
                     <td className="px-4 py-3 text-zinc-300">
                       <div className="flex items-center gap-2">
-                        {entry.type === 'demand' && (
+                        {(entry.type === 'demand' || entry.status === 'Em Execução') && (
                           <span className="px-1.5 py-0.5 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded text-[10px] font-bold uppercase tracking-wider shrink-0">
                             Demanda
                           </span>
@@ -662,7 +698,7 @@ export default function Timesheet() {
                       {entry.hours}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-right">
-                      {(isManager || (entry.type === 'manual' && entry.devName === profile?.name)) && (
+                      {(isManager || entry.devName === profile?.name) && (
                         <div className="relative">
                           <button
                             onClick={(e) => {

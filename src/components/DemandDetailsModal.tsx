@@ -14,7 +14,7 @@ interface DemandDetailsModalProps {
 }
 
 export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, onEdit }: DemandDetailsModalProps) {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const isManager = profile?.role === 'manager';
   const [updatingSubItemId, setUpdatingSubItemId] = useState<string | null>(null);
   const [completingSubItem, setCompletingSubItem] = useState<{groupId: string, subItemId: string} | null>(null);
@@ -44,6 +44,12 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [toast, setToast] = useState<{ type: 'error' | 'info'; message: string } | null>(null);
+
+  const showToast = (type: 'error' | 'info', message: string) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   useEffect(() => {
     if (isOpen && demand) {
@@ -90,7 +96,7 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
       fetchComments();
     } else {
       console.error('Error adding comment:', error);
-      alert('Erro ao adicionar comentário.');
+      showToast('error', 'Erro ao adicionar comentário.');
     }
   };
 
@@ -104,7 +110,7 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
     if (!demand || !demand.checklist) return;
     
     if (demand.status === 'A Fazer') {
-      alert('Inicie o atendimento da demanda para interagir com o checklist.');
+      showToast('info', 'Inicie o atendimento da demanda para interagir com o checklist.');
       return;
     }
 
@@ -261,11 +267,47 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
     setCompletingSubItem(null);
   };
 
+  const handlePauseSubItem = async () => {
+    if (!demand || !completingSubItem || !user) return;
+    if (!subItemHours) {
+      showToast('error', 'Informe as horas trabalhadas para pausar.');
+      return;
+    }
+
+    const { groupId, subItemId } = completingSubItem;
+    setUpdatingSubItemId(subItemId);
+
+    // Find sub-item title for the activity description
+    const group = demand.checklist?.find(g => g.id === groupId);
+    const subItem = group?.subItems.find(s => s.id === subItemId);
+    const activity = `${demand.title} - ${group?.title}: ${subItem?.title}`;
+
+    try {
+      const { error } = await supabase.from('time_entries').insert([{
+        user_id: user.id,
+        date: subItemDate,
+        client: demand.client || '',
+        activity,
+        status: 'Em Execução',
+        hours: subItemHours,
+      }]);
+      if (error) throw error;
+      setCompletingSubItem(null);
+      setSubItemHours('');
+      setSubItemObservation('');
+      setSubItemDate(getLocalDateString());
+    } catch (err: any) {
+      showToast('error', 'Erro ao registrar horas parciais.');
+    } finally {
+      setUpdatingSubItemId(null);
+    }
+  };
+
   const toggleAllSubItems = async (groupId: string, forceComplete: boolean) => {
     if (!demand || !demand.checklist) return;
     
     if (demand.status === 'A Fazer') {
-      alert('Inicie o atendimento da demanda para interagir com o checklist.');
+      showToast('info', 'Inicie o atendimento da demanda para interagir com o checklist.');
       return;
     }
 
@@ -321,7 +363,7 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
       onClose();
     } else {
       console.error('Error deleting demand:', error);
-      alert('Erro ao excluir demanda.');
+      showToast('error', 'Erro ao excluir demanda.');
     }
   };
 
@@ -337,7 +379,7 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
       onUpdate();
     } else {
       console.error('Error starting work:', error);
-      alert('Erro ao iniciar atendimento.');
+      showToast('error', 'Erro ao iniciar atendimento.');
     }
   };
 
@@ -365,7 +407,7 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
   const handleFinishWork = async () => {
     const parsedHours = parseHours(loggedHours);
     if (!loggedHours || isNaN(parsedHours)) {
-      alert('Por favor, insira um tempo válido (HH:MM) para as horas gastas.');
+      showToast('error', 'Por favor, insira um tempo válido (HH:MM) para as horas gastas.');
       return;
     }
 
@@ -389,7 +431,7 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
       onClose();
     } else {
       console.error('Error finishing work:', error);
-      alert('Erro ao finalizar demanda.');
+      showToast('error', 'Erro ao finalizar demanda.');
     }
   };
 
@@ -416,6 +458,16 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      {/* Toast */}
+      {toast && (
+        <div className={`fixed top-6 right-6 z-[60] flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border text-sm font-medium ${
+          toast.type === 'error'
+            ? 'bg-red-500/10 border-red-500/30 text-red-400'
+            : 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400'
+        }`}>
+          {toast.message}
+        </div>
+      )}
       <div className="bg-[#111111] border border-zinc-800 rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[90vh]">
         
         {/* Header */}
@@ -909,6 +961,7 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
                                     </div>
                                     <div className="flex justify-end gap-2">
                                       <button onClick={() => setCompletingSubItem(null)} className="px-3 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-md transition-colors">Cancelar</button>
+                                      <button onClick={handlePauseSubItem} disabled={updatingSubItemId === subItem.id} className="px-3 py-1.5 text-xs font-medium bg-amber-600 hover:bg-amber-500 text-white rounded-md transition-colors disabled:opacity-50" title="Registra as horas do dia sem concluir o ponto">Pausar</button>
                                       <button onClick={confirmSubItemCompletion} disabled={updatingSubItemId === subItem.id} className="px-3 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white rounded-md transition-colors disabled:opacity-50">Confirmar</button>
                                     </div>
                                   </div>

@@ -742,15 +742,13 @@ export default function Overtime() {
               </button>
             </div>
           )}
-          {isManager && (
-            <button
+          <button
               onClick={() => setIsModalOpen(true)}
               className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20"
             >
               <Plus className="w-4 h-4" />
               Nova Hora Extra
             </button>
-          )}
         </div>
       </div>
 
