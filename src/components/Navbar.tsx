@@ -1,13 +1,22 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LayoutDashboard, LogOut, Clock } from 'lucide-react';
+import { LayoutDashboard, LogOut, Clock, Users } from 'lucide-react';
 
 export default function Navbar() {
   const { profile, signOut } = useAuth();
   const location = useLocation();
 
   if (!profile) return null;
+
+  const isManager = profile.role === 'manager';
+
+  const linkClass = (path: string) =>
+    `flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+      location.pathname === path
+        ? 'bg-zinc-800/80 text-zinc-100'
+        : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
+    }`;
 
   return (
     <header className="bg-[#0A0A0A]/80 backdrop-blur-md border-b border-zinc-800/80 sticky top-0 z-20">
@@ -23,46 +32,33 @@ export default function Navbar() {
           </div>
 
           <nav className="flex items-center gap-1">
-            <Link
-              to="/"
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                location.pathname === '/'
-                  ? 'bg-zinc-800/80 text-zinc-100'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
-              }`}
-            >
+            <Link to="/" className={linkClass('/')}>
               <LayoutDashboard className="w-4 h-4" />
               <span className="hidden sm:inline">Meu Painel</span>
             </Link>
-            <Link
-              to="/timesheet"
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                location.pathname === '/timesheet'
-                  ? 'bg-zinc-800/80 text-zinc-100'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
-              }`}
-            >
+            <Link to="/timesheet" className={linkClass('/timesheet')}>
               <Clock className="w-4 h-4" />
               <span className="hidden sm:inline">Apontamentos</span>
             </Link>
-            <Link
-              to="/overtime"
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                location.pathname === '/overtime'
-                  ? 'bg-zinc-800/80 text-zinc-100'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
-              }`}
-            >
+            <Link to="/overtime" className={linkClass('/overtime')}>
               <Clock className="w-4 h-4" />
               <span className="hidden sm:inline">Horas Extras</span>
             </Link>
+            {isManager && (
+              <Link to="/usuarios" className={linkClass('/usuarios')}>
+                <Users className="w-4 h-4" />
+                <span className="hidden sm:inline">Usuários</span>
+              </Link>
+            )}
           </nav>
         </div>
 
         <div className="flex items-center gap-4">
           <div className="text-right hidden sm:block">
             <p className="text-sm font-medium text-zinc-200">{profile.name}</p>
-            <p className="text-[10px] font-medium tracking-wider text-zinc-400 uppercase">{profile.role === 'manager' ? 'Gerente' : 'Funcionário'}</p>
+            <p className="text-[10px] font-medium tracking-wider text-zinc-400 uppercase">
+              {isManager ? 'Gerente' : 'Funcionário'}
+            </p>
           </div>
           <button
             onClick={signOut}

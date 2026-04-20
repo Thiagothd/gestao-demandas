@@ -15,6 +15,7 @@ interface DemandDetailsModalProps {
 
 export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, onEdit }: DemandDetailsModalProps) {
   const { profile } = useAuth();
+  const isManager = profile?.role === 'manager';
   const [updatingSubItemId, setUpdatingSubItemId] = useState<string | null>(null);
   const [completingSubItem, setCompletingSubItem] = useState<{groupId: string, subItemId: string} | null>(null);
   const [subItemHours, setSubItemHours] = useState('');
@@ -446,8 +447,8 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
                 Reabrir
               </button>
             )}
-            {demand.status !== 'Concluído' && (
-              <button 
+            {isManager && demand.status !== 'Concluído' && (
+              <button
                 onClick={() => {
                   onClose();
                   onEdit();
@@ -458,13 +459,15 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
                 <Edit2 className="w-5 h-5" />
               </button>
             )}
-            <button 
-              onClick={() => setShowDeleteConfirm(true)}
-              className="p-2 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-              title="Excluir Demanda"
-            >
-              <Trash2 className="w-5 h-5" />
-            </button>
+            {isManager && (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="p-2 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                title="Excluir Demanda"
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
+            )}
             <div className="w-px h-6 bg-zinc-800 mx-1"></div>
             <button onClick={onClose} className="p-2 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 rounded-lg transition-colors">
               <X className="w-5 h-5" />

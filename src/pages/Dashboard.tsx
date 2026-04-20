@@ -37,6 +37,7 @@ const PriorityBadge = ({ priority }: { priority: string }) => {
 
 export default function Dashboard() {
   const { profile } = useAuth();
+  const isManager = profile?.role === 'manager';
   const [demands, setDemands] = useState<Demand[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDemand, setSelectedDemand] = useState<Demand | null>(null);
@@ -93,25 +94,36 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    fetchDemands();
+    let cancelled = false;
+    const timeoutId = setTimeout(() => {
+      if (!cancelled) setIsLoading(false);
+    }, 15000);
+
+    fetchDemands().finally(() => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    });
+
+    return () => { cancelled = true; clearTimeout(timeoutId); };
   }, [profile]);
 
   const fetchDemands = async () => {
-    if (!profile) return;
+    if (!profile) { setIsLoading(false); return; }
     setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('demands')
+        .select('*, assignee:profiles!assigned_to(id, name, role)')
+        .order('created_at', { ascending: false });
 
-    let query = supabase
-      .from('demands')
-      .select('*, assignee:profiles!assigned_to(id, name, role)');
-
-    const { data, error } = await query.order('created_at', { ascending: false });
-
-    if (error) {
+      if (error) throw error;
+      setDemands((data as Demand[]) ?? []);
+    } catch (error) {
       console.error('Error fetching demands:', error);
-    } else if (data) {
-      setDemands(data as Demand[]);
+      setDemands([]);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   // When a task is updated in the details modal, we want to refresh the specific demand or all demands
@@ -244,17 +256,19 @@ export default function Dashboard() {
     <div className="space-y-6 h-full flex flex-col">
       {/* Header Actions */}
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-zinc-100">Locação Web</h2>
-        <button
-          onClick={() => {
-            setDemandToEdit(null);
-            setIsModalOpen(true);
-          }}
-          className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20"
-        >
-          <Plus className="w-4 h-4" />
-          Nova Demanda
-        </button>
+        <h2 className="text-2xl font-bold text-zinc-100">Painel de Demandas</h2>
+        {isManager && (
+          <button
+            onClick={() => {
+              setDemandToEdit(null);
+              setIsModalOpen(true);
+            }}
+            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20"
+          >
+            <Plus className="w-4 h-4" />
+            Nova Demanda
+          </button>
+        )}
       </div>
 
       {/* Filters Bar */}
@@ -432,7 +446,6 @@ export default function Dashboard() {
                           const slaColor = isOverdue && demand.status !== 'Concluído' ? 'text-red-400' : 'text-zinc-400 tracking-wide';
 
                           return (
-                            // @ts-expect-error React 19 type incompatibility
                             <Draggable key={demand.id} draggableId={demand.id} index={index}>
                               {(provided, snapshot) => (
                                 <div

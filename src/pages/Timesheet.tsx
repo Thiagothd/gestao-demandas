@@ -50,6 +50,7 @@ const formatHours = (decimalHours: number) => {
 
 export default function Timesheet() {
   const { user, profile } = useAuth();
+  const isManager = profile?.role === 'manager';
   const [entries, setEntries] = useState<UnifiedTimeEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [needsSetup, setNeedsSetup] = useState(false);
@@ -202,29 +203,25 @@ export default function Timesheet() {
   const fetchEntries = async () => {
     setIsLoading(true);
     try {
-      // Fetch profiles for mapping
-      const { data: profiles } = await supabase.from('profiles').select('id, name');
+      const [
+        { data: profiles },
+        { data: manualData, error: manualError },
+        { data: demandsData, error: demandsError },
+      ] = await Promise.all([
+        supabase.from('profiles').select('id, name'),
+        supabase.from('time_entries').select('*'),
+        supabase.from('demands').select('id, client, title, checklist, assigned_to, created_at, completed_at'),
+      ]);
+
       const profileMap = Object.fromEntries(profiles?.map(p => [p.id, p.name]) || []);
 
-      // Fetch manual entries
-      const { data: manualData, error: manualError } = await supabase
-        .from('time_entries')
-        .select('*');
-
       if (manualError) {
-        // Check if error is related to missing table (42P01 is Postgres code for undefined_table)
-        // Also check message for 'relation "public.time_entries" does not exist'
         if (manualError.code === '42P01' || manualError.message?.includes('does not exist')) {
           setNeedsSetup(true);
         } else {
           console.error('Error fetching manual entries:', manualError);
         }
       }
-
-      // Fetch demands
-      const { data: demandsData, error: demandsError } = await supabase
-        .from('demands')
-        .select('id, client, title, checklist, assigned_to, created_at, completed_at');
 
       if (demandsError) throw demandsError;
 
@@ -291,7 +288,17 @@ export default function Timesheet() {
   };
 
   useEffect(() => {
-    fetchEntries();
+    let cancelled = false;
+    const timeoutId = setTimeout(() => {
+      if (!cancelled) setIsLoading(false);
+    }, 15000);
+
+    fetchEntries().finally(() => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    });
+
+    return () => { cancelled = true; clearTimeout(timeoutId); };
   }, []);
 
   const handleAddEntry = async (e: React.FormEvent) => {
@@ -490,19 +497,21 @@ export default function Timesheet() {
           <h2 className="text-2xl font-bold text-zinc-100">Controle de Horas</h2>
         </div>
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <input
-              type="file"
-              accept=".xlsx,.xls,.csv"
-              onChange={handleFileUpload}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              title="Importar planilha"
-            />
-            <button className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg text-sm font-medium transition-colors border border-zinc-700/50">
-              <Upload className="w-4 h-4" />
-              <span className="hidden sm:inline">Importar</span>
-            </button>
-          </div>
+          {isManager && (
+            <div className="relative">
+              <input
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                onChange={handleFileUpload}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                title="Importar planilha"
+              />
+              <button className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg text-sm font-medium transition-colors border border-zinc-700/50">
+                <Upload className="w-4 h-4" />
+                <span className="hidden sm:inline">Importar</span>
+              </button>
+            </div>
+          )}
           <button
             onClick={() => setIsModalOpen(true)}
             className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20"
@@ -653,42 +662,44 @@ export default function Timesheet() {
                       {entry.hours}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-right">
-                      <div className="relative">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOpenMenuId(openMenuId === entry.id ? null : entry.id);
-                          }}
-                          className="p-1 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 rounded transition-colors"
-                        >
-                          <MoreVertical className="w-4 h-4" />
-                        </button>
-                        
-                        {openMenuId === entry.id && (
-                          <div className="absolute right-0 mt-1 w-36 bg-[#1A1A1A] border border-zinc-800 rounded-lg shadow-xl z-50 py-1">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEdit(entry);
-                              }}
-                              className="w-full px-4 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white flex items-center gap-2"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                              Editar
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDelete(entry);
-                              }}
-                              className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-zinc-800 hover:text-red-300 flex items-center gap-2"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              Excluir
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                      {(isManager || (entry.type === 'manual' && entry.devName === profile?.name)) && (
+                        <div className="relative">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenuId(openMenuId === entry.id ? null : entry.id);
+                            }}
+                            className="p-1 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 rounded transition-colors"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+
+                          {openMenuId === entry.id && (
+                            <div className="absolute right-0 mt-1 w-36 bg-[#1A1A1A] border border-zinc-800 rounded-lg shadow-xl z-50 py-1">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEdit(entry);
+                                }}
+                                className="w-full px-4 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white flex items-center gap-2"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                                Editar
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDelete(entry);
+                                }}
+                                className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-zinc-800 hover:text-red-300 flex items-center gap-2"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                Excluir
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))

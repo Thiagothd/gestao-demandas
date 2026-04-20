@@ -6,17 +6,21 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Timesheet from './pages/Timesheet';
 import Overtime from './pages/Overtime';
+import UsersPage from './pages/Users';
+
+const Spinner = () => (
+  <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
+    <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+  </div>
+);
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, profile, isLoading } = useAuth();
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
+  if (isLoading) return <Spinner />;
+
+  // Usuário autenticado mas perfil ainda carregando — aguarda em vez de redirecionar
+  if (user && !profile) return <Spinner />;
 
   if (!user || !profile) {
     return <Navigate to="/login" replace />;
@@ -28,13 +32,10 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function AppRoutes() {
   const { user, profile, isLoading } = useAuth();
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
+  if (isLoading) return <Spinner />;
+
+  // Aguarda o perfil carregar após login bem-sucedido
+  if (user && !profile) return <Spinner />;
 
   return (
     <Routes>
@@ -75,6 +76,20 @@ function AppRoutes() {
               <Navbar />
               <main className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1">
                 <Overtime />
+              </main>
+            </div>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/usuarios"
+        element={
+          <ProtectedRoute>
+            <div className="min-h-screen bg-[#0A0A0A] font-sans text-zinc-100 selection:bg-indigo-500/30 flex flex-col antialiased">
+              <Navbar />
+              <main className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1">
+                <UsersPage />
               </main>
             </div>
           </ProtectedRoute>

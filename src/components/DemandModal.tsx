@@ -2,9 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { getLocalDateString } from '../utils';
 import { Profile, DemandPriority, Demand, ChecklistItem, ChecklistSubItem, Attachment } from '../types';
-import { X, Plus, Link as LinkIcon, Tag, CheckSquare, AlertCircle, Save, Wand2, Upload, Trash2, Edit2, Loader2, ChevronDown, ChevronRight, ChevronUp } from 'lucide-react';
+import { X, Plus, Link as LinkIcon, Tag, CheckSquare, AlertCircle, Save, Wand2, Upload, Trash2, Edit2, ChevronDown, ChevronRight, ChevronUp } from 'lucide-react';
 import * as mammoth from 'mammoth';
-import { GoogleGenAI, Type } from '@google/genai';
 
 interface DemandModalProps {
   isOpen: boolean;
@@ -27,7 +26,6 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [quickChecklistInput, setQuickChecklistInput] = useState('');
   const [showSmartImport, setShowSmartImport] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
@@ -250,78 +248,68 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
     setQuickChecklistInput('');
   };
 
-  const handleSmartImport = async () => {
+  const parseTextToChecklist = (text: string): { title: string; subItems: string[] }[] => {
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 1);
+    if (lines.length === 0) return [{ title: 'Geral', subItems: [] }];
+
+    // Seção principal: "1 –", "2–", "1 -", "1.", "1)" no início da linha
+    const reSection = /^(\d+)\s*[–\-.]\s*(.+)/;
+    // Bullets: ►, ▶, →, -, *, •
+    const reBullet = /^[►▶→\-*•]\s+(.+)/;
+    // Linhas decorativas ou URLs para ignorar
+    const reDecor = /^[\s►▶→\-–_=*]+$/;
+    const reUrl = /https?:\/\//;
+
+    const groups: { title: string; subItems: string[] }[] = [];
+    let current: { title: string; subItems: string[] } | null = null;
+
+    for (const line of lines) {
+      if (reDecor.test(line)) continue;
+      if (reUrl.test(line)) continue;
+
+      const sectionMatch = reSection.exec(line);
+      if (sectionMatch) {
+        // Nova seção numerada → novo grupo
+        if (current) groups.push(current);
+        current = { title: sectionMatch[2].trim(), subItems: [] };
+      } else if (reBullet.test(line)) {
+        // Bullet dentro de uma seção → sub-item
+        if (current) {
+          current.subItems.push(reBullet.exec(line)![1].trim());
+        }
+        // Bullets antes de qualquer seção são ignorados (instruções gerais)
+      } else if (current) {
+        // Qualquer outra linha dentro de uma seção → sub-item
+        current.subItems.push(line);
+      }
+      // Linhas antes da primeira seção (título do doc) são ignoradas
+    }
+
+    if (current) groups.push(current);
+
+    // Fallback: nenhuma seção numerada encontrada → trata tudo como lista simples
+    if (groups.length === 0) {
+      const items = lines
+        .filter(l => !reDecor.test(l) && !reUrl.test(l))
+        .map(l => reBullet.exec(l)?.[1]?.trim() ?? l);
+      return [{ title: 'Geral', subItems: items }];
+    }
+
+    return groups.filter(g => g.subItems.length > 0);
+  };
+
+  const handleSmartImport = () => {
     if (!aiPrompt.trim()) return;
-    
-    setIsGenerating(true);
     setErrorMessage(null);
 
     try {
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-      
-      if (!apiKey) {
-        throw new Error("Chave da API do Gemini não configurada. Verifique o arquivo .env");
-      }
+      const parsedData = parseTextToChecklist(aiPrompt);
 
-      const ai = new GoogleGenAI({ apiKey });
-      
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: `Você é um assistente especialista em organizar demandas e criar checklists inteligentes. Analise o texto a seguir e extraia um checklist hierárquico. 
-        
-        REGRAS IMPORTANTES:
-        1. Ignore comentários, ruídos, saudações, introduções ou textos que não representem ações claras a serem feitas.
-        2. Estruture o checklist em grupos principais (ex: "1. Preparação", "Fase A") e subtarefas (ex: "a) Revisar documento", "- Enviar email").
-        3. SEJA INTELIGENTE: Não coloque um grupo inteiro como um único item de checklist se ele tiver subtarefas. O grupo deve ser apenas o título agregador.
-        4. As subtarefas devem ser ações claras, concisas e diretas que podem ser marcadas como concluídas.
-        5. Se o texto descrever um fluxo ou processo, divida-o logicamente em etapas (grupos) e ações (subtarefas).
-        6. Se o texto for apenas uma lista simples sem hierarquia clara, crie um grupo chamado "Geral" e adicione os itens como subtarefas.
-        7. Extraia o máximo de valor acionável do texto, mas não crie tarefas que não foram mencionadas ou implícitas.
-        
-        Texto:
-        ${aiPrompt}`,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                title: {
-                  type: Type.STRING,
-                  description: "O título do grupo principal (ex: '1. Preparação')",
-                },
-                subItems: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.STRING,
-                    description: "O título da subtarefa acionável (ex: 'a) Revisar documento')",
-                  },
-                  description: "Lista de subtarefas pertencentes a este grupo",
-                },
-              },
-              required: ["title", "subItems"],
-            },
-          },
-        },
-      });
-
-      const jsonStr = response.text?.trim() || "[]";
-      let parsedData = JSON.parse(jsonStr);
-      
-      if (!Array.isArray(parsedData) || parsedData.length === 0) {
-        // Fallback if AI returns empty or invalid format
-        parsedData = [{
-          title: "Geral",
-          subItems: aiPrompt.split('\n').filter(line => line.trim().length > 0)
-        }];
-      }
-      
-      const newChecklist: ChecklistItem[] = parsedData.map((group: any) => ({
+      const newChecklist: ChecklistItem[] = parsedData.map((group) => ({
         id: crypto.randomUUID(),
         title: group.title || 'Grupo sem título',
         isGroup: true,
-        subItems: (group.subItems || []).map((subTitle: string) => ({
+        subItems: group.subItems.map((subTitle) => ({
           id: crypto.randomUUID(),
           title: subTitle,
           completed: false
@@ -329,18 +317,12 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
       }));
 
       setChecklistItems(prev => [...prev, ...newChecklist]);
-      
-      // Expand new groups by default
+
       const newExpandedState: Record<string, boolean> = {};
-      newChecklist.forEach(g => {
-        newExpandedState[g.id] = true;
-      });
+      newChecklist.forEach(g => { newExpandedState[g.id] = true; });
       setExpandedGroups(prev => ({ ...prev, ...newExpandedState }));
     } catch (err: any) {
-      console.error('Error generating checklist:', err);
-      setErrorMessage(`Erro ao gerar checklist com IA: ${err.message}`);
-    } finally {
-      setIsGenerating(false);
+      setErrorMessage(`Erro ao gerar checklist: ${err.message}`);
     }
   };
 
@@ -372,6 +354,20 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
     }
   };
 
+  const ALLOWED_MIME_TYPES = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'text/plain',
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+  ];
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
   const handleAttachmentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -381,21 +377,27 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
 
     try {
       const newAttachments: Attachment[] = [];
-      
+
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const fileExt = file.name.split('.').pop();
+
+        if (file.size > MAX_FILE_SIZE) {
+          throw new Error(`"${file.name}" excede o limite de 10MB.`);
+        }
+
+        if (file.type && !ALLOWED_MIME_TYPES.includes(file.type)) {
+          throw new Error(`Tipo de arquivo não permitido: "${file.type}". Envie PDF, Word, Excel, imagens ou .txt.`);
+        }
+
+        const fileExt = file.name.split('.').pop()?.toLowerCase() || 'bin';
         const fileName = `${crypto.randomUUID()}.${fileExt}`;
         const filePath = `demand-attachments/${fileName}`;
 
-        // Ensure the bucket exists or handle the error gracefully
         const { error: uploadError } = await supabase.storage
           .from('attachments')
-          .upload(filePath, file);
+          .upload(filePath, file, { cacheControl: '3600', upsert: false });
 
-        if (uploadError) {
-          throw uploadError;
-        }
+        if (uploadError) throw uploadError;
 
         const { data: { publicUrl } } = supabase.storage
           .from('attachments')
@@ -412,8 +414,8 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
 
       setAttachments(prev => [...prev, ...newAttachments]);
     } catch (err: any) {
-      console.error('Error uploading attachment:', err);
-      setErrorMessage(`Erro ao fazer upload do anexo: ${err.message}. Certifique-se de que o bucket 'attachments' existe no Supabase e é público.`);
+      console.error('Erro ao fazer upload:', err);
+      setErrorMessage(`Erro ao fazer upload: ${err.message}. Certifique-se de que o bucket 'attachments' existe no Supabase e é público.`);
     } finally {
       setIsUploadingFile(false);
       if (attachmentInputRef.current) {
@@ -768,20 +770,11 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
                         <button
                           type="button"
                           onClick={handleSmartImport}
-                          disabled={!aiPrompt.trim() || isGenerating}
+                          disabled={!aiPrompt.trim()}
                           className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20"
                         >
-                          {isGenerating ? (
-                            <>
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                              Analisando e Gerando...
-                            </>
-                          ) : (
-                            <>
-                              <Wand2 className="w-4 h-4" />
-                              Gerar Checklist com IA
-                            </>
-                          )}
+                          <Wand2 className="w-4 h-4" />
+                          Gerar Checklist Inteligente
                         </button>
                       </div>
                     </div>
