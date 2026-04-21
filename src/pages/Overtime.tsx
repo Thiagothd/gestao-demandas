@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
-import { Search, Filter, Calendar, X, Clock, User, MoreVertical, Edit2, Trash2, Plus, Upload } from 'lucide-react';
+import { Search, Filter, Calendar, X, Clock, User, MoreVertical, Edit2, Trash2, Plus, Upload, CheckCircle, AlertCircle } from 'lucide-react';
 import { getLocalDateString } from '../utils';
 import * as XLSX from 'xlsx';
 
@@ -88,6 +88,12 @@ export default function Overtime() {
 
   const [confirmPayDev, setConfirmPayDev] = useState<{ userId: string, pendingEntries: OvertimeEntry[] } | null>(null);
   const [confirmDeleteEntry, setConfirmDeleteEntry] = useState<OvertimeEntry | null>(null);
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const showToast = (type: 'success' | 'error', message: string) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 3500);
+  };
 
   const handleEdit = (entry: OvertimeEntry) => {
     setEditingEntry(entry);
@@ -130,7 +136,7 @@ export default function Overtime() {
       setConfirmDeleteEntry(null);
     } catch (error: any) {
       console.error('Error deleting entry:', error);
-      alert('Erro ao excluir hora extra: ' + (error.message || JSON.stringify(error)));
+      showToast('error', 'Erro ao excluir hora extra: ' + (error.message || 'Tente novamente.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -179,7 +185,7 @@ export default function Overtime() {
       fetchEntries();
     } catch (error) {
       console.error('Error saving entry:', error);
-      alert('Erro ao salvar hora extra.');
+      showToast('error', 'Erro ao salvar hora extra.');
     } finally {
       setIsSubmitting(false);
     }
@@ -215,7 +221,7 @@ export default function Overtime() {
       fetchEntries();
     } catch (error) {
       console.error('Error adding entry:', error);
-      alert('Erro ao adicionar hora extra.');
+      showToast('error', 'Erro ao adicionar hora extra.');
     } finally {
       setIsSubmitting(false);
     }
@@ -276,11 +282,11 @@ export default function Overtime() {
         const { error } = await supabase.from('overtime_entries').insert(entriesToInsert);
         if (error) throw error;
 
-        alert('Planilha importada com sucesso!');
+        showToast('success', 'Planilha importada com sucesso!');
         fetchEntries();
       } catch (error) {
         console.error('Error importing spreadsheet:', error);
-        alert('Erro ao importar planilha. Verifique o formato do arquivo.');
+        showToast('error', 'Erro ao importar planilha. Verifique o formato do arquivo.');
       }
     };
     reader.readAsBinaryString(file);
@@ -702,7 +708,7 @@ export default function Overtime() {
       setConfirmPayDev(null);
     } catch (error: any) {
       console.error('Error paying overtime:', error);
-      alert('Erro ao registrar pagamento: ' + (error.message || JSON.stringify(error)));
+      showToast('error', 'Erro ao registrar pagamento: ' + (error.message || 'Tente novamente.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -1401,6 +1407,18 @@ export default function Overtime() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div className={`fixed bottom-6 right-6 z-[100] flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-2xl border text-sm font-medium transition-all ${
+          toast.type === 'success'
+            ? 'bg-emerald-950 border-emerald-800 text-emerald-300'
+            : 'bg-red-950 border-red-800 text-red-300'
+        }`}>
+          {toast.type === 'success' ? <CheckCircle className="w-4 h-4 flex-shrink-0" /> : <AlertCircle className="w-4 h-4 flex-shrink-0" />}
+          {toast.message}
         </div>
       )}
     </div>
