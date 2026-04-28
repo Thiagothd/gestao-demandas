@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Demand, Comment } from '../types';
 import { getLocalDateString } from '../utils';
-import { X, Calendar, User, Tag, Paperclip, CheckSquare, Square, Building2, AlignLeft, Link as LinkIcon, Trash2, Edit2, AlertTriangle, Play, CheckCircle2, Clock, MessageSquare, Send, ChevronDown, ChevronRight, ChevronUp } from 'lucide-react';
+import { X, Calendar, User, Tag, Paperclip, CheckSquare, Square, Building2, AlignLeft, Link as LinkIcon, Trash2, Edit2, AlertTriangle, Play, CheckCircle2, Clock, MessageSquare, Send, ChevronDown, ChevronRight, ChevronUp, Plus } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -29,6 +29,9 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
   const [reopeningItem, setReopeningItem] = useState<{groupId: string, subItemId: string} | null>(null);
   const [markingErrorFor, setMarkingErrorFor] = useState<{groupId: string, subItemId: string} | null>(null);
   const [errorNoteInput, setErrorNoteInput] = useState('');
+  const [showAddCorrection, setShowAddCorrection] = useState(false);
+  const [correctionText, setCorrectionText] = useState('');
+  const [correctionGroupId, setCorrectionGroupId] = useState('');
 
   const toggleGroup = (groupId: string, currentState: boolean) => {
     setExpandedGroups(prev => ({
@@ -392,6 +395,38 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
     setIsUpdatingStatus(false);
     if (!error) { onUpdate(); onClose(); }
     else showToast('error', 'Erro ao aprovar demanda.');
+  };
+
+  const handleAddCorrection = async () => {
+    if (!demand || !demand.checklist || !correctionText.trim()) return;
+    const targetGroupId = correctionGroupId || demand.checklist[0]?.id;
+    if (!targetGroupId) return;
+
+    const newSubItem = {
+      id: crypto.randomUUID(),
+      title: correctionText.trim(),
+      completed: false,
+      in_progress: false,
+      isCorrection: true,
+    };
+
+    const newChecklist = demand.checklist.map(g =>
+      g.id === targetGroupId ? { ...g, subItems: [...g.subItems, newSubItem] } : g
+    );
+
+    const { error } = await supabase
+      .from('demands')
+      .update({ checklist: newChecklist, status: 'Em Andamento' })
+      .eq('id', demand.id);
+
+    if (!error) {
+      setShowAddCorrection(false);
+      setCorrectionText('');
+      setCorrectionGroupId('');
+      onUpdate();
+    } else {
+      showToast('error', 'Erro ao adicionar ponto de correção.');
+    }
   };
 
   const handleMarkSubItemError = async () => {
@@ -997,6 +1032,11 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
                                       {subItem.title}
                                     </span>
                                     <div className="flex items-center gap-2 shrink-0 ml-2 flex-wrap justify-end">
+                                      {subItem.isCorrection && (
+                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-orange-500/20 text-orange-400">
+                                          Correção
+                                        </span>
+                                      )}
                                       {subItem.cycle && subItem.cycle >= 2 && (
                                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-400">
                                           {subItem.cycle}ª Entrega
@@ -1139,6 +1179,62 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
                     );
                   })}
                 </div>
+
+                {/* Add Correction Button — visible to manager during review */}
+                {isManager && demand.status === 'Aguardando Revisão' && (
+                  <div className="mt-3">
+                    {!showAddCorrection ? (
+                      <button
+                        onClick={() => {
+                          setShowAddCorrection(true);
+                          setCorrectionGroupId(demand.checklist?.[0]?.id || '');
+                        }}
+                        className="flex items-center gap-2 text-xs font-medium text-amber-400 hover:text-amber-300 px-3 py-2 border border-amber-500/20 hover:border-amber-500/40 rounded-lg transition-colors bg-amber-500/5 hover:bg-amber-500/10 w-full justify-center"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Adicionar Ponto de Correção
+                      </button>
+                    ) : (
+                      <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg space-y-3">
+                        <p className="text-xs font-medium text-amber-400">Novo ponto de correção:</p>
+                        <input
+                          type="text"
+                          value={correctionText}
+                          onChange={(e) => setCorrectionText(e.target.value)}
+                          placeholder="Descreva o que precisa ser corrigido..."
+                          className="w-full bg-[#111111] border border-zinc-800 rounded-md px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-amber-500 placeholder-zinc-600"
+                          autoFocus
+                        />
+                        {demand.checklist && demand.checklist.length > 1 && (
+                          <select
+                            value={correctionGroupId}
+                            onChange={(e) => setCorrectionGroupId(e.target.value)}
+                            className="w-full bg-[#111111] border border-zinc-800 rounded-md px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-amber-500"
+                          >
+                            {demand.checklist.map(g => (
+                              <option key={g.id} value={g.id}>{g.title}</option>
+                            ))}
+                          </select>
+                        )}
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => { setShowAddCorrection(false); setCorrectionText(''); }}
+                            className="px-3 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-md transition-colors"
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            onClick={handleAddCorrection}
+                            disabled={!correctionText.trim()}
+                            className="px-3 py-1.5 text-xs font-medium bg-amber-600 hover:bg-amber-500 text-white rounded-md transition-colors disabled:opacity-50"
+                          >
+                            Adicionar
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </>
           )}

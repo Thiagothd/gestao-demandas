@@ -8,6 +8,7 @@ interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   isLoading: boolean;
+  isFetchingProfile: boolean;
   signOut: () => Promise<void>;
 }
 
@@ -18,10 +19,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isFetchingProfile, setIsFetchingProfile] = useState(false);
   const mountedRef = useRef(true);
   const loadedUserIdRef = useRef<string | null>(null);
 
   const fetchProfile = async (userId: string) => {
+    setIsFetchingProfile(true);
     try {
       const timeout = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('timeout')), 10000)
@@ -37,6 +40,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Erro ao buscar perfil:', error);
       if (mountedRef.current) setProfile(null);
+    } finally {
+      if (mountedRef.current) setIsFetchingProfile(false);
     }
   };
 
@@ -100,7 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, profile, isLoading, signOut }}>
+    <AuthContext.Provider value={{ session, user, profile, isLoading, isFetchingProfile, signOut }}>
       {children}
     </AuthContext.Provider>
   );

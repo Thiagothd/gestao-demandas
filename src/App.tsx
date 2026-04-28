@@ -15,12 +15,9 @@ const Spinner = () => (
 );
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, profile, isLoading } = useAuth();
+  const { user, profile, isLoading, isFetchingProfile } = useAuth();
 
-  if (isLoading) return <Spinner />;
-
-  // Usuário autenticado mas perfil ainda carregando — aguarda em vez de redirecionar
-  if (user && !profile) return <Spinner />;
+  if (isLoading || isFetchingProfile) return <Spinner />;
 
   if (!user || !profile) {
     return <Navigate to="/login" replace />;
@@ -30,12 +27,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppRoutes() {
-  const { user, profile, isLoading } = useAuth();
+  const { user, profile, isLoading, isFetchingProfile } = useAuth();
 
-  if (isLoading) return <Spinner />;
-
-  // Aguarda o perfil carregar após login bem-sucedido
-  if (user && !profile) return <Spinner />;
+  if (isLoading || isFetchingProfile) return <Spinner />;
 
   return (
     <Routes>

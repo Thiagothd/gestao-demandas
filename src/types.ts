@@ -29,6 +29,7 @@ export interface ChecklistSubItem {
   hasError?: boolean;
   errorNote?: string;
   cycle?: number;
+  isCorrection?: boolean;
 }
 
 export interface ChecklistItem {
