@@ -6,7 +6,7 @@ export interface Profile {
   role: Role;
 }
 
-export type DemandStatus = 'A Fazer' | 'Em Andamento' | 'Concluído';
+export type DemandStatus = 'A Fazer' | 'Em Andamento' | 'Aguardando Revisão' | 'Concluído';
 export type DemandPriority = 'Baixa' | 'Média' | 'Alta' | 'Urgente';
 
 export interface Comment {
@@ -26,6 +26,9 @@ export interface ChecklistSubItem {
   observation?: string;
   completed_at?: string;
   completed_by?: string;
+  hasError?: boolean;
+  errorNote?: string;
+  cycle?: number;
 }
 
 export interface ChecklistItem {

@@ -27,6 +27,8 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showReopenConfirm, setShowReopenConfirm] = useState(false);
   const [reopeningItem, setReopeningItem] = useState<{groupId: string, subItemId: string} | null>(null);
+  const [markingErrorFor, setMarkingErrorFor] = useState<{groupId: string, subItemId: string} | null>(null);
+  const [errorNoteInput, setErrorNoteInput] = useState('');
 
   const toggleGroup = (groupId: string, currentState: boolean) => {
     setExpandedGroups(prev => ({
@@ -234,14 +236,17 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
       if (g.id === groupId) {
         return {
           ...g,
-          subItems: g.subItems.map(s => s.id === subItemId ? { 
-            ...s, 
-            completed: true, 
+          subItems: g.subItems.map(s => s.id === subItemId ? {
+            ...s,
+            completed: true,
             in_progress: false,
-            logged_hours: hours, 
+            logged_hours: hours,
             observation: subItemObservation || undefined,
             completed_at: completedDate,
-            completed_by: profile?.id
+            completed_by: profile?.id,
+            cycle: (s.cycle || 0) + 1,
+            hasError: false,
+            errorNote: undefined,
           } : s)
         };
       }
@@ -367,6 +372,61 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
     }
   };
 
+  const handleSendForReview = async () => {
+    setIsUpdatingStatus(true);
+    const { error } = await supabase
+      .from('demands')
+      .update({ status: 'Aguardando Revisão' })
+      .eq('id', demand.id);
+    setIsUpdatingStatus(false);
+    if (!error) onUpdate();
+    else showToast('error', 'Erro ao enviar para revisão.');
+  };
+
+  const handleApprove = async () => {
+    setIsUpdatingStatus(true);
+    const { error } = await supabase
+      .from('demands')
+      .update({ status: 'Concluído', completed_at: new Date().toISOString() })
+      .eq('id', demand.id);
+    setIsUpdatingStatus(false);
+    if (!error) { onUpdate(); onClose(); }
+    else showToast('error', 'Erro ao aprovar demanda.');
+  };
+
+  const handleMarkSubItemError = async () => {
+    if (!demand || !demand.checklist || !markingErrorFor) return;
+    const { groupId, subItemId } = markingErrorFor;
+    setUpdatingSubItemId(subItemId);
+
+    const newChecklist = demand.checklist.map(g => {
+      if (g.id === groupId) {
+        return {
+          ...g,
+          subItems: g.subItems.map(s => s.id === subItemId ? {
+            ...s,
+            completed: false,
+            in_progress: false,
+            hasError: true,
+            errorNote: errorNoteInput.trim() || undefined,
+          } : s)
+        };
+      }
+      return g;
+    });
+
+    const { error } = await supabase
+      .from('demands')
+      .update({ checklist: newChecklist, status: 'Em Andamento' })
+      .eq('id', demand.id);
+
+    setUpdatingSubItemId(null);
+    setMarkingErrorFor(null);
+    setErrorNoteInput('');
+    if (!error) onUpdate();
+    else showToast('error', 'Erro ao marcar item.');
+  };
+
   const handleStartWork = async () => {
     setIsUpdatingStatus(true);
     const { error } = await supabase
@@ -482,15 +542,23 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
               <span className={`px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider border ${getPriorityColor(demand.priority)}`}>
                 {demand.priority}
               </span>
-              <span className="px-2.5 py-1 rounded-md text-xs font-medium bg-zinc-800 text-zinc-300 border border-zinc-700">
+              <span className={`px-2.5 py-1 rounded-md text-xs font-medium border ${
+                demand.status === 'Aguardando Revisão'
+                  ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                  : demand.status === 'Concluído'
+                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                  : demand.status === 'Em Andamento'
+                  ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
+                  : 'bg-zinc-800 text-zinc-300 border-zinc-700'
+              }`}>
                 {demand.status}
               </span>
             </div>
             <h2 className="text-2xl font-semibold text-zinc-100 leading-tight">{demand.title}</h2>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {demand.status === 'Concluído' && (
-              <button 
+            {(demand.status === 'Concluído' || demand.status === 'Aguardando Revisão') && isManager && (
+              <button
                 onClick={() => setShowReopenConfirm(true)}
                 className="px-3 py-1.5 text-xs font-medium bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/20 rounded-lg transition-colors flex items-center gap-2"
                 title="Reabrir Demanda"
@@ -596,21 +664,45 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
             </div>
           )}
 
-          {demand.status === 'Em Andamento' && !showFinishForm && (
+          {demand.status === 'Em Andamento' && (
             <div className="flex justify-end">
               <button
-                onClick={handleOpenFinishForm}
-                disabled={!allChecklistItemsCompleted}
-                title={!allChecklistItemsCompleted ? 'Conclua todos os itens do checklist para finalizar' : ''}
+                onClick={handleSendForReview}
+                disabled={!allChecklistItemsCompleted || isUpdatingStatus}
+                title={!allChecklistItemsCompleted ? 'Conclua todos os itens do checklist para enviar para revisão' : ''}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg ${
-                  allChecklistItemsCompleted 
-                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-500/20' 
+                  allChecklistItemsCompleted
+                    ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-amber-500/20'
                     : 'bg-zinc-700 text-zinc-400 cursor-not-allowed shadow-none'
                 }`}
               >
-                <CheckCircle2 className="w-4 h-4" />
-                Finalizar Demanda
+                <Send className="w-4 h-4" />
+                {isUpdatingStatus ? 'Enviando...' : 'Enviar para Revisão'}
               </button>
+            </div>
+          )}
+
+          {demand.status === 'Aguardando Revisão' && isManager && (
+            <div className="flex items-center justify-between gap-3 px-4 py-3 bg-amber-500/5 border border-amber-500/20 rounded-xl">
+              <p className="text-xs text-amber-400 flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                Clique no ícone <span className="font-bold">⚠</span> ao lado de cada ponto concluído para marcar erro
+              </p>
+              <button
+                onClick={handleApprove}
+                disabled={isUpdatingStatus}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-emerald-500/20 disabled:opacity-50 shrink-0"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                {isUpdatingStatus ? 'Aprovando...' : 'Aprovar Demanda'}
+              </button>
+            </div>
+          )}
+
+          {demand.status === 'Aguardando Revisão' && !isManager && (
+            <div className="flex items-center gap-2 px-4 py-3 bg-amber-500/5 border border-amber-500/20 rounded-xl text-sm text-amber-400">
+              <Clock className="w-4 h-4 shrink-0" />
+              Demanda enviada para revisão — aguardando aprovação do gerente
             </div>
           )}
 
@@ -873,13 +965,15 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
                           <div className="p-2 space-y-1">
                             {group.subItems.map(subItem => (
                               <div key={subItem.id} className="flex flex-col w-full">
-                                <div 
+                                <div
                                   className={`flex items-start gap-3 p-2.5 rounded-lg transition-all duration-200 group ${
-                                    subItem.completed 
-                                      ? 'bg-emerald-500/5 hover:bg-emerald-500/10' 
-                                      : subItem.in_progress
-                                        ? 'bg-amber-500/5 hover:bg-amber-500/10'
-                                        : 'hover:bg-zinc-800/50'
+                                    subItem.hasError
+                                      ? 'bg-red-500/10 border border-red-500/20'
+                                      : subItem.completed
+                                        ? 'bg-emerald-500/5 hover:bg-emerald-500/10'
+                                        : subItem.in_progress
+                                          ? 'bg-amber-500/5 hover:bg-amber-500/10'
+                                          : 'hover:bg-zinc-800/50'
                                   } ${updatingSubItemId === subItem.id ? 'opacity-50 pointer-events-none' : ''}`}
                                 >
                                   <button
@@ -902,14 +996,33 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
                                     <span className={`text-sm transition-all duration-200 ${subItem.completed ? 'text-zinc-500' : 'text-zinc-300 group-hover:text-zinc-200'}`}>
                                       {subItem.title}
                                     </span>
-                                    <div className="flex items-center gap-2 shrink-0 ml-2">
+                                    <div className="flex items-center gap-2 shrink-0 ml-2 flex-wrap justify-end">
+                                      {subItem.cycle && subItem.cycle >= 2 && (
+                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-400">
+                                          {subItem.cycle}ª Entrega
+                                        </span>
+                                      )}
                                       <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-md ${
-                                        subItem.completed ? 'bg-emerald-500/20 text-emerald-400' : 
-                                        subItem.in_progress ? 'bg-amber-500/20 text-amber-400' : 
+                                        subItem.hasError ? 'bg-red-500/20 text-red-400' :
+                                        subItem.completed ? 'bg-emerald-500/20 text-emerald-400' :
+                                        subItem.in_progress ? 'bg-amber-500/20 text-amber-400' :
                                         'bg-zinc-800 text-zinc-400'
                                       }`}>
-                                        {subItem.completed ? 'Concluído' : subItem.in_progress ? 'Em Andamento' : 'Pendente'}
+                                        {subItem.hasError ? 'Com Erro' : subItem.completed ? 'Concluído' : subItem.in_progress ? 'Em Andamento' : 'Pendente'}
                                       </span>
+                                      {isManager && demand.status === 'Aguardando Revisão' && subItem.completed && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setMarkingErrorFor({ groupId: group.id, subItemId: subItem.id });
+                                            setErrorNoteInput('');
+                                          }}
+                                          className="p-1 text-red-400/50 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                                          title="Marcar como Com Erro"
+                                        >
+                                          <AlertTriangle className="w-3.5 h-3.5" />
+                                        </button>
+                                      )}
                                       {subItem.completed && (subItem.logged_hours || subItem.observation || subItem.completed_at) && (
                                         <button 
                                           onClick={(e) => {
@@ -925,6 +1038,44 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
                                     </div>
                                   </div>
                                 </div>
+
+                                {/* Error note */}
+                                {subItem.hasError && subItem.errorNote && (
+                                  <div className="ml-9 mb-1 px-2 py-1.5 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-400 flex items-start gap-1.5">
+                                    <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
+                                    <span><span className="font-semibold">Erro:</span> {subItem.errorNote}</span>
+                                  </div>
+                                )}
+
+                                {/* Mark error inline form */}
+                                {markingErrorFor?.subItemId === subItem.id && (
+                                  <div className="ml-9 mb-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg space-y-2">
+                                    <p className="text-xs font-medium text-red-400">Descreva o erro encontrado (opcional):</p>
+                                    <input
+                                      type="text"
+                                      value={errorNoteInput}
+                                      onChange={(e) => setErrorNoteInput(e.target.value)}
+                                      placeholder="Ex: Botão não salva corretamente..."
+                                      className="w-full bg-[#111111] border border-red-500/20 rounded-md px-2 py-1.5 text-sm text-zinc-200 focus:outline-none focus:border-red-500 placeholder-zinc-600"
+                                      autoFocus
+                                    />
+                                    <div className="flex justify-end gap-2">
+                                      <button
+                                        onClick={() => { setMarkingErrorFor(null); setErrorNoteInput(''); }}
+                                        className="px-3 py-1 text-xs font-medium text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded transition-colors"
+                                      >
+                                        Cancelar
+                                      </button>
+                                      <button
+                                        onClick={handleMarkSubItemError}
+                                        disabled={updatingSubItemId === subItem.id}
+                                        className="px-3 py-1 text-xs font-medium bg-red-600 hover:bg-red-500 text-white rounded transition-colors disabled:opacity-50"
+                                      >
+                                        Confirmar Erro
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
 
                                 {/* Display logged hours and observation if completed */}
                                 {subItem.completed && (subItem.logged_hours || subItem.observation || subItem.completed_at) && expandedSubItems[subItem.id] && (

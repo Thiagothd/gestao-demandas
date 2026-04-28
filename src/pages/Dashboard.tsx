@@ -8,7 +8,7 @@ import DemandDetailsModal from '../components/DemandDetailsModal';
 import { Plus, Calendar, Search, Filter, CheckSquare, Building2, User, X } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 
-const COLUMNS: DemandStatus[] = ['A Fazer', 'Em Andamento', 'Concluído'];
+const COLUMNS: DemandStatus[] = ['A Fazer', 'Em Andamento', 'Aguardando Revisão', 'Concluído'];
 
 const Avatar = ({ name }: { name?: string }) => {
   if (!name) return <div className="w-6 h-6 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-[10px] text-zinc-400 font-medium tracking-wide">?</div>;
@@ -410,7 +410,7 @@ export default function Dashboard() {
 
       {/* Kanban Board */}
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6 min-h-[60vh] overflow-x-auto pb-4 items-start">
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 min-h-[60vh] overflow-x-auto pb-4 items-start">
           {COLUMNS.map(column => {
             const columnDemands = filteredDemands.filter(d => d.status === column);
 
@@ -421,6 +421,7 @@ export default function Dashboard() {
                   <h3 className="font-semibold text-zinc-200 flex items-center gap-2">
                     {column === 'A Fazer' && <div className="w-2 h-2 rounded-full bg-zinc-500" />}
                     {column === 'Em Andamento' && <div className="w-2 h-2 rounded-full bg-indigo-500" />}
+                    {column === 'Aguardando Revisão' && <div className="w-2 h-2 rounded-full bg-amber-500" />}
                     {column === 'Concluído' && <div className="w-2 h-2 rounded-full bg-emerald-500" />}
                     {column}
                   </h3>
@@ -444,7 +445,7 @@ export default function Dashboard() {
                       ) : (
                         columnDemands.map((demand, index) => {
                           const isOverdue = demand.sla && new Date(demand.sla).getTime() < new Date().setHours(0,0,0,0);
-                          const slaColor = isOverdue && demand.status !== 'Concluído' ? 'text-red-400' : 'text-zinc-400 tracking-wide';
+                          const slaColor = isOverdue && demand.status !== 'Concluído' && demand.status !== 'Aguardando Revisão' ? 'text-red-400' : 'text-zinc-400 tracking-wide';
 
                           return (
                             <Draggable key={demand.id} draggableId={demand.id} index={index} isDragDisabled={!isManager}>
@@ -480,9 +481,23 @@ export default function Dashboard() {
                                     <PriorityBadge priority={demand.priority} />
                                   </div>
                                   
-                                  <h4 className="text-sm font-medium text-zinc-100 mb-4 leading-snug line-clamp-2 group-hover:text-indigo-300 transition-colors">
+                                  <h4 className="text-sm font-medium text-zinc-100 mb-2 leading-snug line-clamp-2 group-hover:text-indigo-300 transition-colors">
                                     {demand.title}
                                   </h4>
+                                  {demand.status === 'Aguardando Revisão' && (
+                                    <div className="mb-2">
+                                      <span className="text-[9px] font-bold px-2 py-0.5 bg-amber-500/15 text-amber-400 rounded border border-amber-500/25 uppercase tracking-wider">
+                                        Aguardando Revisão
+                                      </span>
+                                    </div>
+                                  )}
+                                  {demand.checklist?.some(g => g.subItems.some(s => s.hasError)) && (
+                                    <div className="mb-2">
+                                      <span className="text-[9px] font-bold px-2 py-0.5 bg-red-500/15 text-red-400 rounded border border-red-500/25 uppercase tracking-wider">
+                                        Itens com Erro
+                                      </span>
+                                    </div>
+                                  )}
                                   
                                   <div className="flex items-center justify-between mt-auto">
                                     <div className="flex items-center gap-3">
