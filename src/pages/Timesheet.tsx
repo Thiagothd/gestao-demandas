@@ -255,7 +255,7 @@ export default function Timesheet() {
             demand.checklist.forEach(group => {
               if (Array.isArray(group.subItems)) {
                 group.subItems.forEach(subItem => {
-                  if (subItem.completed) {
+                  if (subItem.completed && subItem.logged_hours) {
                     const completedAt = subItem.completed_at || demand.completed_at || demand.created_at;
                     const dateObj = new Date(completedAt);
                     const dateStr = getLocalDateString(dateObj);
