@@ -32,6 +32,9 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
   const [showAddCorrection, setShowAddCorrection] = useState(false);
   const [correctionText, setCorrectionText] = useState('');
   const [correctionGroupId, setCorrectionGroupId] = useState('');
+  const [completingGroup, setCompletingGroup] = useState<string | null>(null);
+  const [groupHours, setGroupHours] = useState('');
+  const [groupDate, setGroupDate] = useState(getLocalDateString());
 
   const toggleGroup = (groupId: string, currentState: boolean) => {
     setExpandedGroups(prev => ({
@@ -228,11 +231,15 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
 
   const confirmSubItemCompletion = async () => {
     if (!demand || !demand.checklist || !completingSubItem) return;
-    
+    if (!subItemHours) {
+      showToast('error', 'Informe as horas trabalhadas para concluir o ponto.');
+      return;
+    }
+
     const { groupId, subItemId } = completingSubItem;
     setUpdatingSubItemId(subItemId);
-    
-    const hours = subItemHours ? parseHours(subItemHours) : undefined;
+
+    const hours = parseHours(subItemHours);
     const completedDate = subItemDate ? new Date(subItemDate + 'T12:00:00Z').toISOString() : new Date().toISOString();
     
     const newChecklist = demand.checklist.map(g => {
@@ -372,6 +379,63 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
     } else {
       console.error('Error deleting demand:', error);
       showToast('error', 'Erro ao excluir demanda.');
+    }
+  };
+
+  const confirmGroupCompletion = async () => {
+    if (!demand || !demand.checklist || !completingGroup || !user) return;
+    if (!groupHours) {
+      showToast('error', 'Informe as horas trabalhadas para concluir o grupo.');
+      return;
+    }
+
+    const group = demand.checklist.find(g => g.id === completingGroup);
+    if (!group) return;
+
+    const completedDate = new Date(groupDate + 'T12:00:00Z').toISOString();
+    const hours = parseHours(groupHours);
+
+    const newChecklist = demand.checklist.map(g => {
+      if (g.id === completingGroup) {
+        return {
+          ...g,
+          subItems: g.subItems.map(s => ({
+            ...s,
+            completed: true,
+            in_progress: false,
+            completed_at: completedDate,
+            completed_by: profile?.id,
+            cycle: (s.cycle || 0) + 1,
+            hasError: false,
+            errorNote: undefined,
+          }))
+        };
+      }
+      return g;
+    });
+
+    const activity = `${demand.title} - ${group.title} (grupo completo)`;
+
+    const [{ error: checklistError }, { error: timeError }] = await Promise.all([
+      supabase.from('demands').update({ checklist: newChecklist }).eq('id', demand.id),
+      supabase.from('time_entries').insert([{
+        user_id: user.id,
+        date: groupDate,
+        client: demand.client || '',
+        activity,
+        status: 'Concluído',
+        hours: groupHours,
+      }]),
+    ]);
+
+    if (!checklistError && !timeError) {
+      setCompletingGroup(null);
+      setGroupHours('');
+      setGroupDate(getLocalDateString());
+      setExpandedGroups(prev => ({ ...prev, [completingGroup]: false }));
+      onUpdate();
+    } else {
+      showToast('error', 'Erro ao concluir grupo.');
     }
   };
 
@@ -970,10 +1034,16 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                toggleAllSubItems(group.id, !isGroupCompleted);
+                                if (!isGroupCompleted) {
+                                  setCompletingGroup(group.id);
+                                  setGroupHours('');
+                                  setGroupDate(getLocalDateString());
+                                } else {
+                                  toggleAllSubItems(group.id, false);
+                                }
                               }}
                               className="mt-0.5"
-                              title={isGroupCompleted ? "Desmarcar todos" : "Marcar todos como concluídos"}
+                              title={isGroupCompleted ? "Desmarcar todos" : "Concluir grupo inteiro"}
                             >
                               {isGroupCompleted ? (
                                 <CheckSquare className="w-4 h-4 text-emerald-500 transition-transform duration-200 scale-110" />
@@ -1185,6 +1255,51 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
                             ))}
                           </div>
                         </div>
+
+                        {/* Group completion form */}
+                        {completingGroup === group.id && (
+                          <div className="mx-2 mb-3 mt-2 p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-lg space-y-3">
+                            <p className="text-xs font-medium text-emerald-400">Concluir grupo inteiro — informe as horas:</p>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-xs text-zinc-400 mb-1 block">Data</label>
+                                <input
+                                  type="date"
+                                  value={groupDate}
+                                  onChange={e => setGroupDate(e.target.value)}
+                                  className="w-full bg-[#111111] border border-zinc-800 rounded-md px-2 py-1.5 text-sm text-zinc-200 focus:outline-none focus:border-emerald-500"
+                                  style={{ colorScheme: 'dark' }}
+                                />
+                              </div>
+                              <div>
+                                <label className="text-xs text-zinc-400 mb-1 block">Horas Gastas *</label>
+                                <input
+                                  type="text"
+                                  value={groupHours}
+                                  onChange={e => setGroupHours(formatHoursMask(e.target.value))}
+                                  placeholder="HH:MM"
+                                  maxLength={5}
+                                  className="w-full bg-[#111111] border border-zinc-800 rounded-md px-2 py-1.5 text-sm text-zinc-200 focus:outline-none focus:border-emerald-500 font-mono"
+                                />
+                              </div>
+                            </div>
+                            <div className="flex justify-end gap-2">
+                              <button
+                                onClick={() => setCompletingGroup(null)}
+                                className="px-3 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-md transition-colors"
+                              >
+                                Cancelar
+                              </button>
+                              <button
+                                onClick={confirmGroupCompletion}
+                                disabled={!groupHours}
+                                className="px-3 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white rounded-md transition-colors disabled:opacity-50"
+                              >
+                                Confirmar
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

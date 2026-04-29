@@ -17,7 +17,7 @@ export default function Login() {
   };
 
   useEffect(() => {
-    document.title = 'Login | Gestão & Alinhamento';
+    document.title = 'Login | Gestão de Demandas';
   }, []);
 
   const handleAuth = async (e: React.FormEvent) => {

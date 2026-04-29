@@ -369,9 +369,8 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
   ];
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
-  const handleAttachmentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+  const uploadFiles = async (files: File[]) => {
+    if (files.length === 0) return;
 
     setIsUploadingFile(true);
     setErrorMessage(null);
@@ -379,9 +378,7 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
     try {
       const newAttachments: Attachment[] = [];
 
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-
+      for (const file of files) {
         if (file.size > MAX_FILE_SIZE) {
           throw new Error(`"${file.name}" excede o limite de 10MB.`);
         }
@@ -424,6 +421,37 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
       }
     }
   };
+
+  const handleAttachmentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    uploadFiles(Array.from(files));
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const imageFiles: File[] = [];
+      for (const item of Array.from(items)) {
+        if (item.kind === 'file' && item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (!file) continue;
+          const ext = item.type.split('/')[1] || 'png';
+          const date = new Date().toISOString().slice(0, 10);
+          const named = new File([file], `screenshot-${date}.${ext}`, { type: item.type });
+          imageFiles.push(named);
+        }
+      }
+      if (imageFiles.length > 0) {
+        e.preventDefault();
+        uploadFiles(imageFiles);
+      }
+    };
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, [isOpen]);
 
   const removeAttachment = (attachmentId: string) => {
     setAttachments(prev => prev.filter(a => a.id !== attachmentId));
@@ -630,6 +658,7 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
                     )}
                     {isUploadingFile ? 'Enviando...' : 'Adicionar Anexos'}
                   </button>
+                  <span className="text-xs text-zinc-500">ou cole uma imagem com Ctrl+V</span>
                 </div>
                 
                 {attachments.length > 0 && (

@@ -38,6 +38,8 @@ const PriorityBadge = ({ priority }: { priority: string }) => {
 export default function Dashboard() {
   const { profile } = useAuth();
   const isManager = profile?.role === 'manager';
+
+  useEffect(() => { document.title = 'Painel | Gestão de Demandas'; }, []);
   const [demands, setDemands] = useState<Demand[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDemand, setSelectedDemand] = useState<Demand | null>(null);
