@@ -1,0 +1,26 @@
+name: Deploy JiddSistemas
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Baixar código atualizado
+        uses: actions/checkout@v4
+
+      - name: Instalar dependências
+        run: npm install
+
+      - name: Gerar build
+        run: npm run build
+
+      - name: Publicar no IIS
+        shell: powershell
+        run: |
+          Remove-Item -Path C:\inetpub\cliente2\* -Recurse -Force
+          Copy-Item -Path dist\* -Destination C:\inetpub\cliente2 -Recurse -Force
