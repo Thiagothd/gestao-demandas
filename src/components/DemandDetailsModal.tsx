@@ -626,10 +626,10 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
       {/* Toast */}
       {toast && (
-        <div className={`fixed top-6 right-6 z-[60] flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border text-sm font-medium ${
+        <div className={`fixed top-4 right-4 left-4 sm:left-auto sm:top-6 sm:right-6 z-[60] flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border text-sm font-medium ${
           toast.type === 'error'
             ? 'bg-red-500/10 border-red-500/30 text-red-400'
             : 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400'
@@ -637,21 +637,21 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
           {toast.message}
         </div>
       )}
-      <div className="bg-[#111111] border border-zinc-800 rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[90vh]">
-        
+      <div className="bg-[#111111] border border-zinc-800 rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[95vh] sm:max-h-[90vh]">
+
         {/* Header */}
-        <div className="flex justify-between items-start p-6 border-b border-zinc-800/80 shrink-0">
-          <div className="space-y-3 pr-4">
-            <div className="flex items-center gap-3">
+        <div className="flex justify-between items-start gap-3 p-4 sm:p-6 border-b border-zinc-800/80 shrink-0">
+          <div className="space-y-2 sm:space-y-3 min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 sm:gap-3 flex-wrap">
               {demand.ticket_id && (
-                <span className="px-2.5 py-1 rounded-md text-xs font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md text-[10px] sm:text-xs font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                   #{demand.ticket_id}
                 </span>
               )}
-              <span className={`px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider border ${getPriorityColor(demand.priority)}`}>
+              <span className={`px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md text-[10px] sm:text-xs font-bold uppercase tracking-wider border ${getPriorityColor(demand.priority)}`}>
                 {demand.priority}
               </span>
-              <span className={`px-2.5 py-1 rounded-md text-xs font-medium border ${
+              <span className={`px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md text-[10px] sm:text-xs font-medium border ${
                 demand.status === 'Aguardando Revisão'
                   ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
                   : demand.status === 'Concluído'
@@ -663,17 +663,17 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
                 {demand.status}
               </span>
             </div>
-            <h2 className="text-2xl font-semibold text-zinc-100 leading-tight">{demand.title}</h2>
+            <h2 className="text-lg sm:text-2xl font-semibold text-zinc-100 leading-tight break-words">{demand.title}</h2>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             {(demand.status === 'Concluído' || demand.status === 'Aguardando Revisão') && isManager && (
               <button
                 onClick={() => setShowReopenConfirm(true)}
-                className="px-3 py-1.5 text-xs font-medium bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/20 rounded-lg transition-colors flex items-center gap-2"
+                className="px-2 sm:px-3 py-1.5 text-xs font-medium bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/20 rounded-lg transition-colors flex items-center gap-1.5 sm:gap-2"
                 title="Reabrir Demanda"
               >
-                <Play className="w-4 h-4" />
-                Reabrir
+                <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Reabrir</span>
               </button>
             )}
             {isManager && demand.status !== 'Concluído' && (
@@ -706,12 +706,12 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
 
         {/* Delete Confirmation */}
         {showDeleteConfirm && (
-          <div className="bg-red-500/10 border-b border-red-500/20 p-4 flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-3 text-red-400">
-              <AlertTriangle className="w-5 h-5" />
-              <span className="text-sm font-medium">Tem certeza que deseja excluir esta demanda?</span>
+          <div className="bg-red-500/10 border-b border-red-500/20 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 shrink-0">
+            <div className="flex items-center gap-2 sm:gap-3 text-red-400">
+              <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+              <span className="text-xs sm:text-sm font-medium">Tem certeza que deseja excluir esta demanda?</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-end gap-2">
               <button 
                 onClick={() => setShowDeleteConfirm(false)}
                 className="px-3 py-1.5 text-xs font-medium text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
@@ -732,12 +732,12 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
 
         {/* Reopen Confirmation */}
         {showReopenConfirm && (
-          <div className="bg-amber-500/10 border-b border-amber-500/20 p-4 flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-3 text-amber-400">
-              <AlertTriangle className="w-5 h-5" />
-              <span className="text-sm font-medium">Tem certeza que deseja reabrir esta demanda?</span>
+          <div className="bg-amber-500/10 border-b border-amber-500/20 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 shrink-0">
+            <div className="flex items-center gap-2 sm:gap-3 text-amber-400">
+              <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+              <span className="text-xs sm:text-sm font-medium">Tem certeza que deseja reabrir esta demanda?</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-end gap-2">
               <button 
                 onClick={() => setShowReopenConfirm(false)}
                 className="px-3 py-1.5 text-xs font-medium text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
@@ -757,7 +757,7 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
         )}
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto flex-1 min-h-0 space-y-8 custom-scrollbar">
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0 space-y-6 sm:space-y-8 custom-scrollbar">
           
           {/* Workflow Actions */}
           {demand.status === 'A Fazer' && (
@@ -792,15 +792,15 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
           )}
 
           {demand.status === 'Aguardando Revisão' && isManager && (
-            <div className="flex items-center justify-between gap-3 px-4 py-3 bg-amber-500/5 border border-amber-500/20 rounded-xl">
-              <p className="text-xs text-amber-400 flex items-center gap-1.5">
-                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                Clique no ícone <span className="font-bold">⚠</span> ao lado de cada ponto concluído para marcar erro
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-3 sm:px-4 py-3 bg-amber-500/5 border border-amber-500/20 rounded-xl">
+              <p className="text-xs text-amber-400 flex items-start gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                <span>Clique no ícone <span className="font-bold">⚠</span> ao lado de cada ponto concluído para marcar erro</span>
               </p>
               <button
                 onClick={handleApprove}
                 disabled={isUpdatingStatus}
-                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-emerald-500/20 disabled:opacity-50 shrink-0"
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-emerald-500/20 disabled:opacity-50 shrink-0 w-full sm:w-auto"
               >
                 <CheckCircle2 className="w-4 h-4" />
                 {isUpdatingStatus ? 'Aprovando...' : 'Aprovar Demanda'}
@@ -889,7 +889,7 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
           )}
 
           {/* Metadata Grid */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-1.5">
               <span className="text-xs font-medium text-zinc-400 tracking-wide flex items-center gap-1.5"><Building2 className="w-3.5 h-3.5"/> Cliente</span>
               <p className="text-sm text-zinc-200 font-medium">{demand.client || 'Não informado'}</p>
@@ -1016,14 +1016,14 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
                     
                     return (
                       <div key={group.id} className="bg-[#1A1A1A] border border-zinc-800/80 rounded-xl overflow-hidden">
-                        <div 
-                          className={`p-3 flex items-center justify-between border-b border-zinc-800/80 transition-colors ${
-                            isGroupCompleted ? 'bg-emerald-500/10 hover:bg-emerald-500/20' : 
-                            isGroupInProgress ? 'bg-amber-500/10 hover:bg-amber-500/20' : 
+                        <div
+                          className={`p-2.5 sm:p-3 flex items-center justify-between gap-2 border-b border-zinc-800/80 transition-colors ${
+                            isGroupCompleted ? 'bg-emerald-500/10 hover:bg-emerald-500/20' :
+                            isGroupInProgress ? 'bg-amber-500/10 hover:bg-amber-500/20' :
                             'bg-[#111111] hover:bg-zinc-800/50'
                           }`}
                         >
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 flex-wrap">
                             <button 
                               onClick={(e) => { e.stopPropagation(); toggleGroup(group.id, isExpanded); }}
                               className="p-0.5 text-zinc-500 hover:text-zinc-300 transition-colors"
@@ -1054,21 +1054,21 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
                               )}
                             </button>
 
-                            <span 
+                            <span
                               onClick={(e) => { e.stopPropagation(); toggleGroup(group.id, isExpanded); }}
-                              className={`text-sm font-semibold cursor-pointer ${
-                                isGroupCompleted ? 'text-emerald-400' : 
-                                isGroupInProgress ? 'text-amber-400' : 
+                              className={`text-sm font-semibold cursor-pointer break-words ${
+                                isGroupCompleted ? 'text-emerald-400' :
+                                isGroupInProgress ? 'text-amber-400' :
                                 'text-zinc-200'
                               }`}
                             >
                               {group.title}
                             </span>
-                            <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-md ml-2 ${isGroupCompleted ? 'bg-emerald-500/20 text-emerald-400' : isGroupInProgress ? 'bg-amber-500/20 text-amber-400' : 'bg-zinc-800 text-zinc-400'}`}>
+                            <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-md ${isGroupCompleted ? 'bg-emerald-500/20 text-emerald-400' : isGroupInProgress ? 'bg-amber-500/20 text-amber-400' : 'bg-zinc-800 text-zinc-400'}`}>
                               {isGroupCompleted ? 'Concluído' : isGroupInProgress ? 'Em Andamento' : 'Pendente'}
                             </span>
                           </div>
-                          <span className="text-xs font-medium text-zinc-400 tracking-wide bg-zinc-800/50 px-2 py-1 rounded-md">
+                          <span className="text-xs font-medium text-zinc-400 tracking-wide bg-zinc-800/50 px-2 py-1 rounded-md shrink-0">
                             {group.subItems.filter(s => s.completed).length}/{group.subItems.length}
                           </span>
                         </div>
@@ -1107,11 +1107,11 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
                                       <Square className="w-4 h-4 text-zinc-500 hover:text-zinc-400 transition-colors" />
                                     )}
                                   </button>
-                                  <div className="flex-1 flex items-center justify-between">
-                                    <span className={`text-sm transition-all duration-200 ${subItem.completed ? 'text-zinc-500' : 'text-zinc-300 group-hover:text-zinc-200'}`}>
+                                  <div className="flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 min-w-0">
+                                    <span className={`text-sm transition-all duration-200 break-words min-w-0 ${subItem.completed ? 'text-zinc-500' : 'text-zinc-300 group-hover:text-zinc-200'}`}>
                                       {subItem.title}
                                     </span>
-                                    <div className="flex items-center gap-2 shrink-0 ml-2 flex-wrap justify-end">
+                                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 sm:ml-2 flex-wrap sm:justify-end">
                                       {subItem.isCorrection && (
                                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-orange-500/20 text-orange-400">
                                           Correção
@@ -1161,7 +1161,7 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
 
                                 {/* Error note */}
                                 {subItem.hasError && subItem.errorNote && (
-                                  <div className="ml-9 mb-1 px-2 py-1.5 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-400 flex items-start gap-1.5">
+                                  <div className="ml-6 sm:ml-9 mb-1 px-2 py-1.5 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-400 flex items-start gap-1.5">
                                     <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
                                     <span><span className="font-semibold">Erro:</span> {subItem.errorNote}</span>
                                   </div>
@@ -1169,7 +1169,7 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
 
                                 {/* Mark error inline form */}
                                 {markingErrorFor?.subItemId === subItem.id && (
-                                  <div className="ml-9 mb-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg space-y-2">
+                                  <div className="ml-6 sm:ml-9 mb-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg space-y-2">
                                     <p className="text-xs font-medium text-red-400">Descreva o erro encontrado (opcional):</p>
                                     <input
                                       type="text"
@@ -1199,7 +1199,7 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
 
                                 {/* Display logged hours and observation if completed */}
                                 {subItem.completed && (subItem.logged_hours || subItem.observation || subItem.completed_at) && expandedSubItems[subItem.id] && (
-                                  <div className="ml-9 mb-2 p-2 bg-emerald-500/5 border border-emerald-500/10 rounded-lg text-xs text-zinc-400 space-y-1">
+                                  <div className="ml-6 sm:ml-9 mb-2 p-2 bg-emerald-500/5 border border-emerald-500/10 rounded-lg text-xs text-zinc-400 space-y-1">
                                     {subItem.completed_at && <div><span className="font-semibold text-zinc-300">Data:</span> {new Date(subItem.completed_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</div>}
                                     {subItem.logged_hours && <div><span className="font-semibold text-zinc-300">Horas:</span> {Math.floor(subItem.logged_hours).toString().padStart(2, '0')}:{Math.round((subItem.logged_hours % 1) * 60).toString().padStart(2, '0')}</div>}
                                     {subItem.observation && <div><span className="font-semibold text-zinc-300">Obs:</span> {subItem.observation}</div>}
@@ -1208,7 +1208,7 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
 
                                 {/* Inline Form */}
                                 {completingSubItem?.subItemId === subItem.id && (
-                                  <div className="ml-9 mb-2 p-3 bg-[#0A0A0A] border border-zinc-800 rounded-lg space-y-3">
+                                  <div className="ml-6 sm:ml-9 mb-2 p-3 bg-[#0A0A0A] border border-zinc-800 rounded-lg space-y-3">
                                     <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                                       <div className="sm:col-span-1">
                                         <label className="text-xs text-zinc-400 mb-1 block">Data</label>
@@ -1240,12 +1240,12 @@ export default function DemandDetailsModal({ isOpen, onClose, demand, onUpdate, 
 
                                 {/* Reopen Item Confirmation */}
                                 {reopeningItem?.subItemId === subItem.id && (
-                                  <div className="ml-9 mb-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-center justify-between">
-                                    <div className="flex items-center gap-2 text-amber-400">
-                                      <AlertTriangle className="w-4 h-4 shrink-0" />
+                                  <div className="ml-6 sm:ml-9 mb-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                    <div className="flex items-start gap-2 text-amber-400">
+                                      <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                                       <span className="text-xs font-medium">Reabrir item? As horas registradas serão removidas.</span>
                                     </div>
-                                    <div className="flex items-center gap-2 shrink-0">
+                                    <div className="flex items-center gap-2 shrink-0 justify-end">
                                       <button onClick={() => setReopeningItem(null)} className="px-2 py-1 text-[10px] font-medium text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded transition-colors">Cancelar</button>
                                       <button onClick={confirmReopenItem} disabled={updatingSubItemId === subItem.id} className="px-2 py-1 text-[10px] font-medium bg-amber-500 hover:bg-amber-600 text-white rounded transition-colors disabled:opacity-50">Reabrir</button>
                                     </div>

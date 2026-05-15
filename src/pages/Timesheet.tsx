@@ -492,10 +492,10 @@ export default function Timesheet() {
   }
 
   return (
-    <div className="space-y-6 h-full flex flex-col">
+    <div className="space-y-4 sm:space-y-6 h-full flex flex-col">
       {/* Toast */}
       {toast && (
-        <div className={`fixed top-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border text-sm font-medium ${
+        <div className={`fixed top-4 right-4 left-4 sm:left-auto sm:top-6 sm:right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border text-sm font-medium ${
           toast.type === 'success'
             ? 'bg-green-500/10 border-green-500/30 text-green-400'
             : 'bg-red-500/10 border-red-500/30 text-red-400'
@@ -525,14 +525,14 @@ export default function Timesheet() {
       )}
 
       {/* Header Actions */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl shadow-sm">
-            <FileSpreadsheet className="w-6 h-6 text-indigo-400" />
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="p-1.5 sm:p-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl shadow-sm shrink-0">
+            <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-400" />
           </div>
-          <h2 className="text-2xl font-bold text-zinc-100">Controle de Horas</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-zinc-100 truncate">Controle de Horas</h2>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {isManager && (
             <div className="relative">
               <input
@@ -542,7 +542,7 @@ export default function Timesheet() {
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 title="Importar planilha"
               />
-              <button className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg text-sm font-medium transition-colors border border-zinc-700/50">
+              <button className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg text-sm font-medium transition-colors border border-zinc-700/50">
                 <Upload className="w-4 h-4" />
                 <span className="hidden sm:inline">Importar</span>
               </button>
@@ -550,35 +550,35 @@ export default function Timesheet() {
           )}
           <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20"
+            className="flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20"
           >
             <Plus className="w-4 h-4" />
-            Novo Apontamento
+            <span className="hidden sm:inline">Novo Apontamento</span>
+            <span className="sm:hidden">Novo</span>
           </button>
         </div>
       </div>
 
       {/* Filters Bar */}
-      <div className="flex flex-col gap-4 bg-[#111111] p-4 rounded-xl border border-zinc-800/80">
-        <div className="flex flex-wrap gap-4 items-center">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                const newDev = selectedDev === profile?.name ? 'all' : (profile?.name || 'all');
-                setSelectedDev(newDev);
-                setAppliedFilters(prev => ({ ...prev, selectedDev: newDev }));
-              }}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors border ${
-                selectedDev === profile?.name
-                  ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
-                  : 'bg-[#0A0A0A] text-zinc-400 border-zinc-800 hover:text-zinc-200 hover:border-zinc-700'
-              }`}
-            >
-              <User className="w-4 h-4" />
-              Meus Apontamentos
-            </button>
-          </div>
-          <div className="relative flex-1 min-w-[200px]">
+      <div className="flex flex-col gap-3 bg-[#111111] p-3 sm:p-4 rounded-xl border border-zinc-800/80">
+        <button
+          onClick={() => {
+            const newDev = selectedDev === profile?.name ? 'all' : (profile?.name || 'all');
+            setSelectedDev(newDev);
+            setAppliedFilters(prev => ({ ...prev, selectedDev: newDev }));
+          }}
+          className={`self-start flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors border ${
+            selectedDev === profile?.name
+              ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
+              : 'bg-[#0A0A0A] text-zinc-400 border-zinc-800 hover:text-zinc-200 hover:border-zinc-700'
+          }`}
+        >
+          <User className="w-4 h-4" />
+          Meus Apontamentos
+        </button>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
             <input
               type="text"
@@ -589,7 +589,7 @@ export default function Timesheet() {
               className="w-full pl-9 pr-4 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
             />
           </div>
-          <div className="relative flex-1 min-w-[160px]">
+          <div className="relative">
             <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
             <select
               value={selectedDev}
@@ -602,45 +602,45 @@ export default function Timesheet() {
               ))}
             </select>
           </div>
-          
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 flex-1 min-w-[240px]">
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-full sm:w-auto px-3 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-all"
+              className="flex-1 min-w-0 px-2 sm:px-3 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-all"
               style={{ colorScheme: 'dark' }}
             />
-            <span className="text-zinc-500 text-sm">até</span>
+            <span className="text-zinc-500 text-sm shrink-0">até</span>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="w-full sm:w-auto px-3 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-all"
+              className="flex-1 min-w-0 px-2 sm:px-3 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-all"
               style={{ colorScheme: 'dark' }}
             />
           </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
-            <button
-              onClick={handleClearFilters}
-              className="flex-1 sm:flex-none px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg text-sm font-medium transition-colors border border-zinc-700/50 flex items-center justify-center gap-2"
-              title="Limpar todos os filtros"
-            >
-              <X className="w-4 h-4" />
-              <span className="hidden sm:inline">Limpar</span>
-            </button>
-            <button
-              onClick={handleApplyFilters}
-              className="flex-1 sm:flex-none px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20"
-            >
-              Buscar
-            </button>
-          </div>
+          <button
+            onClick={handleClearFilters}
+            className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg text-sm font-medium transition-colors border border-zinc-700/50 flex items-center justify-center gap-2"
+            title="Limpar todos os filtros"
+          >
+            <X className="w-4 h-4" />
+            <span>Limpar</span>
+          </button>
+          <button
+            onClick={handleApplyFilters}
+            className="flex-1 sm:flex-none px-4 sm:px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20"
+          >
+            Buscar
+          </button>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-[#111111] border border-zinc-800/80 rounded-xl overflow-hidden flex-1 flex flex-col">
+      {/* Table (md+) */}
+      <div className="hidden md:flex bg-[#111111] border border-zinc-800/80 rounded-xl overflow-hidden flex-1 flex-col">
         <div className="overflow-x-auto flex-1">
           <table className="w-full text-left text-sm text-zinc-300">
             <thead className="bg-[#1A1A1A] text-xs uppercase font-medium text-zinc-400 tracking-wide border-b border-zinc-800/80 sticky top-0 z-10">
@@ -757,11 +757,83 @@ export default function Timesheet() {
         </div>
       </div>
 
+      {/* Card list (mobile) */}
+      <div className="md:hidden bg-[#111111] border border-zinc-800/80 rounded-xl flex-1 flex flex-col overflow-hidden">
+        {isLoading ? (
+          <div className="flex justify-center py-12">
+            <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : filteredEntries.length === 0 ? (
+          <div className="px-4 py-12 text-center text-zinc-500 text-sm">
+            Nenhum apontamento encontrado.
+          </div>
+        ) : (
+          <>
+            <ul className="divide-y divide-zinc-800/50 overflow-y-auto">
+              {filteredEntries.map(entry => (
+                <li key={entry.id} className="p-3 sm:p-4 space-y-2 hover:bg-zinc-800/20 transition-colors">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-zinc-100 truncate">{entry.devName}</p>
+                      <p className="text-xs text-zinc-500">
+                        {new Date(entry.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })} · {entry.client}
+                      </p>
+                    </div>
+                    <span className="font-mono text-sm font-semibold text-indigo-300 shrink-0">
+                      {entry.hours}
+                    </span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    {(entry.type === 'demand' || entry.status === 'Em Execução') && (
+                      <span className="px-1.5 py-0.5 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded text-[10px] font-bold uppercase tracking-wider shrink-0 mt-0.5">
+                        Demanda
+                      </span>
+                    )}
+                    <p className="text-sm text-zinc-300 leading-snug break-words">{entry.activity}</p>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 pt-1">
+                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-medium tracking-wide ${
+                      entry.status === 'Concluído' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                      entry.status === 'Em execução' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' :
+                      'bg-zinc-800 text-zinc-400 border border-zinc-700'
+                    }`}>
+                      {entry.status}
+                    </span>
+                    {(isManager || entry.devName === profile?.name) && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleEdit(entry)}
+                          className="p-1.5 text-zinc-400 hover:text-indigo-300 hover:bg-indigo-500/10 rounded-md transition-colors"
+                          aria-label="Editar"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(entry)}
+                          className="p-1.5 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors"
+                          aria-label="Excluir"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <div className="border-t border-zinc-800/80 px-4 py-3 flex items-center justify-between bg-[#1A1A1A]">
+              <span className="text-sm font-medium text-zinc-300">Total:</span>
+              <span className="font-mono text-base font-bold text-indigo-400">{totalHoursFormatted}</span>
+            </div>
+          </>
+        )}
+      </div>
+
       {/* Add Entry Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#111111] border border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl flex flex-col">
-            <div className="flex justify-between items-center p-6 border-b border-zinc-800 shrink-0">
+          <div className="bg-[#111111] border border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="flex justify-between items-center p-4 sm:p-6 border-b border-zinc-800 shrink-0">
               <h2 className="text-xl font-semibold text-zinc-100">Novo Apontamento</h2>
               <button 
                 onClick={() => setIsModalOpen(false)}
@@ -771,8 +843,8 @@ export default function Timesheet() {
               </button>
             </div>
 
-            <form onSubmit={handleAddEntry} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleAddEntry} className="p-4 sm:p-6 space-y-4 overflow-y-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-zinc-300">Data</label>
                   <input
@@ -866,8 +938,8 @@ export default function Timesheet() {
       {/* Edit Modal */}
       {isEditModalOpen && editingEntry && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#111111] border border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl flex flex-col">
-            <div className="flex justify-between items-center p-6 border-b border-zinc-800 shrink-0">
+          <div className="bg-[#111111] border border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="flex justify-between items-center p-4 sm:p-6 border-b border-zinc-800 shrink-0">
               <h2 className="text-xl font-semibold text-zinc-100">Editar Apontamento</h2>
               <button 
                 onClick={() => {
@@ -880,8 +952,8 @@ export default function Timesheet() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveEdit} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleSaveEdit} className="p-4 sm:p-6 space-y-4 overflow-y-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-zinc-300">Data</label>
                   <input

@@ -489,11 +489,11 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-[#111111] border border-zinc-800 rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[90vh]">
-        <div className="flex justify-between items-center p-6 border-b border-zinc-800 shrink-0">
-          <h2 className="text-xl font-semibold text-zinc-100">{demandToEdit ? 'Editar Demanda' : 'Nova Demanda'}</h2>
-          <button 
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-[#111111] border border-zinc-800 rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[95vh] sm:max-h-[90vh]">
+        <div className="flex justify-between items-center p-4 sm:p-6 border-b border-zinc-800 shrink-0">
+          <h2 className="text-lg sm:text-xl font-semibold text-zinc-100">{demandToEdit ? 'Editar Demanda' : 'Nova Demanda'}</h2>
+          <button
             onClick={onClose}
             className="p-2 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 rounded-lg transition-colors"
           >
@@ -501,7 +501,7 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
           </button>
         </div>
 
-        <div className="overflow-y-auto flex-1 min-h-0 p-6 space-y-6 custom-scrollbar">
+        <div className="overflow-y-auto flex-1 min-h-0 p-4 sm:p-6 space-y-6 custom-scrollbar">
           {errorMessage && (
             <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
@@ -637,7 +637,7 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
                 Anexos
               </label>
               <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                   <input
                     type="file"
                     multiple
@@ -649,7 +649,7 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
                     type="button"
                     onClick={() => attachmentInputRef.current?.click()}
                     disabled={isUploadingFile}
-                    className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg text-sm font-medium transition-colors border border-zinc-700/50 flex items-center gap-2 disabled:opacity-50"
+                    className="px-3 sm:px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg text-sm font-medium transition-colors border border-zinc-700/50 flex items-center gap-2 disabled:opacity-50"
                   >
                     {isUploadingFile ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -658,7 +658,7 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
                     )}
                     {isUploadingFile ? 'Enviando...' : 'Adicionar Anexos'}
                   </button>
-                  <span className="text-xs text-zinc-500">ou cole uma imagem com Ctrl+V</span>
+                  <span className="text-xs text-zinc-500 hidden sm:inline">ou cole uma imagem com Ctrl+V</span>
                 </div>
                 
                 {attachments.length > 0 && (
@@ -717,7 +717,7 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
               </div>
 
               {/* Quick Checklist Input */}
-              <div className="flex gap-2 mb-4">
+              <div className="flex flex-col sm:flex-row gap-2 mb-4">
                 <input
                   type="text"
                   value={quickChecklistInput}
@@ -728,14 +728,14 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
                       handleAddQuickItem();
                     }
                   }}
-                  placeholder="Adicionar item rápido (Ex: Menu - Vendas - Proposta: Erro ao abrir)"
+                  placeholder="Adicionar item rápido..."
                   className="flex-1 bg-[#0A0A0A] border border-zinc-800 rounded-lg px-4 py-2 text-sm text-zinc-100 focus:outline-none focus:border-indigo-500 transition-colors placeholder:text-zinc-600"
                 />
                 <button
                   type="button"
                   onClick={handleAddQuickItem}
                   disabled={!quickChecklistInput.trim()}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                 >
                   Adicionar
                 </button>
@@ -821,7 +821,7 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
                   </div>
                   {checklistItems.map((group) => (
                     <div key={group.id} className="bg-[#1A1A1A] border border-zinc-800/80 rounded-xl overflow-hidden shadow-md transition-all duration-200 hover:border-zinc-700/80">
-                      <div className="flex items-center gap-3 p-3 border-b border-zinc-800/50 bg-[#111111] hover:bg-zinc-800/30 transition-colors">
+                      <div className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 border-b border-zinc-800/50 bg-[#111111] hover:bg-zinc-800/30 transition-colors">
                         <button
                           type="button"
                           onClick={() => toggleGroup(group.id)}
@@ -841,8 +841,11 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
                           className="flex-1 bg-transparent border-none text-sm font-semibold text-zinc-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 rounded px-2 py-1.5 hover:bg-zinc-800/50 transition-all"
                           placeholder="Nome do Grupo"
                         />
-                        <span className="text-xs text-indigo-300 font-medium px-2.5 py-1 bg-indigo-500/10 rounded-md border border-indigo-500/20">
+                        <span className="hidden sm:inline-flex text-xs text-indigo-300 font-medium px-2.5 py-1 bg-indigo-500/10 rounded-md border border-indigo-500/20">
                           {group.subItems.length} {group.subItems.length === 1 ? 'item' : 'itens'}
+                        </span>
+                        <span className="sm:hidden text-xs text-indigo-300 font-medium px-2 py-0.5 bg-indigo-500/10 rounded-md border border-indigo-500/20">
+                          {group.subItems.length}
                         </span>
                         <button
                           type="button"
@@ -859,7 +862,7 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
                           expandedGroups[group.id] !== false ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
                         }`}
                       >
-                        <div className="p-4 pl-12 space-y-2.5 bg-[#1A1A1A]">
+                        <div className="p-3 sm:p-4 pl-6 sm:pl-12 space-y-2.5 bg-[#1A1A1A]">
                           {group.subItems.map((subItem) => (
                             <div key={subItem.id} className="flex items-start gap-3 group/item p-1 -ml-1 rounded-lg hover:bg-zinc-800/30 transition-colors">
                               <div className="w-4 h-4 rounded border border-zinc-600 bg-zinc-900/50 shrink-0 mt-1 flex items-center justify-center shadow-inner">
@@ -914,11 +917,11 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
           </form>
         </div>
 
-        <div className="p-6 border-t border-zinc-800 shrink-0 flex justify-end gap-3 bg-[#111111] rounded-b-2xl">
+        <div className="p-4 sm:p-6 border-t border-zinc-800 shrink-0 flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 bg-[#111111] rounded-b-2xl">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2.5 text-sm font-medium text-zinc-300 hover:text-white hover:bg-zinc-800/50 rounded-lg transition-colors"
+            className="px-4 py-2.5 text-sm font-medium text-zinc-300 hover:text-white hover:bg-zinc-800/50 rounded-lg transition-colors w-full sm:w-auto"
           >
             Cancelar
           </button>
@@ -926,7 +929,7 @@ export default function DemandModal({ isOpen, onClose, onSuccess, demandToEdit }
             type="submit"
             form="demand-form"
             disabled={isSubmitting}
-            className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+            className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2 w-full sm:w-auto"
           >
             {isSubmitting ? (
               <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />

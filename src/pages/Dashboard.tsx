@@ -256,28 +256,29 @@ export default function Dashboard() {
   }, [demands, appliedFilters]);
 
   return (
-    <div className="space-y-6 h-full flex flex-col">
+    <div className="space-y-4 sm:space-y-6 h-full flex flex-col">
       {/* Header Actions */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-zinc-100">Painel de Demandas</h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-xl sm:text-2xl font-bold text-zinc-100 truncate">Painel de Demandas</h2>
         {isManager && (
           <button
             onClick={() => {
               setDemandToEdit(null);
               setIsModalOpen(true);
             }}
-            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20"
+            className="flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20 shrink-0"
           >
             <Plus className="w-4 h-4" />
-            Nova Demanda
+            <span className="hidden sm:inline">Nova Demanda</span>
+            <span className="sm:hidden">Nova</span>
           </button>
         )}
       </div>
 
       {/* Filters Bar */}
-      <div className="flex flex-col gap-4 bg-[#111111] p-4 rounded-xl border border-zinc-800/80">
-        <div className="flex flex-wrap gap-4 items-center">
-          <div className="relative flex-1 min-w-[200px]">
+      <div className="flex flex-col gap-3 sm:gap-4 bg-[#111111] p-3 sm:p-4 rounded-xl border border-zinc-800/80">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
             <input
               type="text"
@@ -288,7 +289,7 @@ export default function Dashboard() {
               className="w-full pl-9 pr-4 py-2 bg-[#0A0A0A] border border-zinc-800 rounded-lg text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
             />
           </div>
-          <div className="relative flex-1 min-w-[160px]">
+          <div className="relative">
             <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
             <select
               value={selectedAssignee}
@@ -303,7 +304,7 @@ export default function Dashboard() {
               ))}
             </select>
           </div>
-          <div className="relative flex-1 min-w-[160px]">
+          <div className="relative">
             <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
             <select
               value={selectedClient}
@@ -318,7 +319,7 @@ export default function Dashboard() {
               ))}
             </select>
           </div>
-          <div className="relative flex-1 min-w-[160px]">
+          <div className="relative">
             <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
             <select
               value={selectedRequester}
@@ -333,68 +334,69 @@ export default function Dashboard() {
               ))}
             </select>
           </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
-            <button
-              onClick={handleClearFilters}
-              className="flex-1 sm:flex-none px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg text-sm font-medium transition-colors border border-zinc-700/50 flex items-center justify-center gap-2"
-              title="Limpar todos os filtros"
-            >
-              <X className="w-4 h-4" />
-              <span className="hidden sm:inline">Limpar</span>
-            </button>
-            <button
-              onClick={() => {
-                if (profile?.id) {
-                  setSelectedAssignee(profile.id);
-                  setAppliedFilters(prev => ({ ...prev, selectedAssignee: profile.id }));
-                }
-              }}
-              className="flex-1 sm:flex-none px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg text-sm font-medium transition-colors border border-zinc-700/50 flex items-center justify-center gap-2"
-              title="Filtrar pelas minhas demandas"
-            >
-              <User className="w-4 h-4" />
-              <span className="hidden sm:inline">Minhas Demandas</span>
-              <span className="sm:hidden">Minhas</span>
-            </button>
-            <button
-              onClick={handleApplyFilters}
-              className="flex-1 sm:flex-none px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20"
-            >
-              Buscar
-            </button>
-          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={handleClearFilters}
+            className="flex-1 min-w-[100px] sm:flex-none px-3 sm:px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg text-sm font-medium transition-colors border border-zinc-700/50 flex items-center justify-center gap-2"
+            title="Limpar todos os filtros"
+          >
+            <X className="w-4 h-4" />
+            <span>Limpar</span>
+          </button>
+          <button
+            onClick={() => {
+              if (profile?.id) {
+                setSelectedAssignee(profile.id);
+                setAppliedFilters(prev => ({ ...prev, selectedAssignee: profile.id }));
+              }
+            }}
+            className="flex-1 min-w-[120px] sm:flex-none px-3 sm:px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg text-sm font-medium transition-colors border border-zinc-700/50 flex items-center justify-center gap-2"
+            title="Filtrar pelas minhas demandas"
+          >
+            <User className="w-4 h-4" />
+            <span className="hidden sm:inline">Minhas Demandas</span>
+            <span className="sm:hidden">Minhas</span>
+          </button>
+          <button
+            onClick={handleApplyFilters}
+            className="flex-1 min-w-[100px] sm:flex-none px-4 sm:px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20"
+          >
+            Buscar
+          </button>
         </div>
 
         {/* Date Filters */}
-        <div className="flex flex-col sm:flex-row gap-4 items-center bg-[#0A0A0A] p-3 rounded-lg border border-zinc-800/50">
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex flex-col lg:flex-row lg:flex-wrap gap-3 lg:items-center bg-[#0A0A0A] p-3 rounded-lg border border-zinc-800/50">
+          <div className="flex items-center gap-2 shrink-0">
             <Calendar className="w-4 h-4 text-zinc-500" />
             <span className="text-sm text-zinc-400 font-medium whitespace-nowrap">Filtrar por data:</span>
           </div>
           <select
             value={dateFilterType}
             onChange={(e) => setDateFilterType(e.target.value)}
-            className="w-full sm:w-auto px-3 py-1.5 bg-[#111111] border border-zinc-800 rounded-md text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-all appearance-none"
+            className="w-full lg:w-auto px-3 py-1.5 bg-[#111111] border border-zinc-800 rounded-md text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-all appearance-none"
           >
             <option value="created_at">Data de Criação</option>
             <option value="sla">Prazo (SLA)</option>
             <option value="completed_at">Data de Conclusão</option>
           </select>
-          
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+
+          <div className="flex items-center gap-2 w-full lg:w-auto">
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-full sm:w-auto px-3 py-1.5 bg-[#111111] border border-zinc-800 rounded-md text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-all"
+              className="flex-1 lg:flex-none min-w-0 px-2 sm:px-3 py-1.5 bg-[#111111] border border-zinc-800 rounded-md text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-all"
               style={{ colorScheme: 'dark' }}
             />
-            <span className="text-zinc-500 text-sm">até</span>
+            <span className="text-zinc-500 text-sm shrink-0">até</span>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="w-full sm:w-auto px-3 py-1.5 bg-[#111111] border border-zinc-800 rounded-md text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-all"
+              className="flex-1 lg:flex-none min-w-0 px-2 sm:px-3 py-1.5 bg-[#111111] border border-zinc-800 rounded-md text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-all"
               style={{ colorScheme: 'dark' }}
             />
           </div>
@@ -402,7 +404,7 @@ export default function Dashboard() {
           {(startDate || endDate) && (
             <button
               onClick={() => { setStartDate(''); setEndDate(''); }}
-              className="text-xs font-medium tracking-wide text-zinc-400 hover:text-zinc-200 transition-colors ml-auto sm:ml-2"
+              className="text-xs font-medium tracking-wide text-zinc-400 hover:text-zinc-200 transition-colors lg:ml-auto self-start lg:self-auto"
             >
               Limpar datas
             </button>
@@ -412,14 +414,14 @@ export default function Dashboard() {
 
       {/* Kanban Board */}
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 min-h-[60vh] overflow-x-auto pb-4 items-start">
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6 min-h-[60vh] pb-4 items-start">
           {COLUMNS.map(column => {
             const columnDemands = filteredDemands.filter(d => d.status === column);
 
             return (
-              <div key={column} className="flex flex-col bg-[#111111] border border-zinc-800/80 rounded-2xl overflow-hidden shadow-sm h-full max-h-[75vh]">
+              <div key={column} className="flex flex-col bg-[#111111] border border-zinc-800/80 rounded-2xl overflow-hidden shadow-sm h-full max-h-[70vh] sm:max-h-[75vh] min-w-0">
                 {/* Column Header */}
-                <div className="p-4 border-b border-zinc-800/80 bg-[#111111] flex items-center justify-between sticky top-0 z-10">
+                <div className="p-3 sm:p-4 border-b border-zinc-800/80 bg-[#111111] flex items-center justify-between sticky top-0 z-10">
                   <h3 className="font-semibold text-zinc-200 flex items-center gap-2">
                     {column === 'A Fazer' && <div className="w-2 h-2 rounded-full bg-zinc-500" />}
                     {column === 'Em Andamento' && <div className="w-2 h-2 rounded-full bg-indigo-500" />}
@@ -438,7 +440,7 @@ export default function Dashboard() {
                     <div 
                       ref={provided.innerRef}
                       {...provided.droppableProps}
-                      className={`p-4 flex-1 overflow-y-auto space-y-3 transition-colors ${snapshot.isDraggingOver ? 'bg-zinc-900/50' : ''}`}
+                      className={`p-3 sm:p-4 flex-1 overflow-y-auto space-y-3 transition-colors ${snapshot.isDraggingOver ? 'bg-zinc-900/50' : ''}`}
                     >
                       {isLoading ? (
                         <div className="flex justify-center py-8">
@@ -457,7 +459,7 @@ export default function Dashboard() {
                                   {...provided.draggableProps}
                                   {...provided.dragHandleProps}
                                   onClick={() => setSelectedDemand(demand)}
-                                  className={`bg-[#1A1A1A] border border-white/5 rounded-xl p-4 transition-all group ${
+                                  className={`bg-[#1A1A1A] border border-white/5 rounded-xl p-3 sm:p-4 transition-all group ${
                                     isManager ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
                                   } ${
                                     snapshot.isDragging ? 'shadow-2xl shadow-black/80 border-indigo-500/50 rotate-2 scale-105' : 'hover:border-white/10 hover:shadow-lg hover:shadow-black/40'

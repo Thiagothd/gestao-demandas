@@ -42,7 +42,7 @@ function AppRoutes() {
           <ProtectedRoute>
             <div className="min-h-screen bg-[#0A0A0A] font-sans text-zinc-100 selection:bg-indigo-500/30 flex flex-col antialiased">
               <Navbar />
-              <main className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1">
+              <main className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 flex-1">
                 <Dashboard />
               </main>
             </div>
@@ -55,7 +55,7 @@ function AppRoutes() {
           <ProtectedRoute>
             <div className="min-h-screen bg-[#0A0A0A] font-sans text-zinc-100 selection:bg-indigo-500/30 flex flex-col antialiased">
               <Navbar />
-              <main className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1">
+              <main className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 flex-1">
                 <Timesheet />
               </main>
             </div>
@@ -68,7 +68,7 @@ function AppRoutes() {
           <ProtectedRoute>
             <div className="min-h-screen bg-[#0A0A0A] font-sans text-zinc-100 selection:bg-indigo-500/30 flex flex-col antialiased">
               <Navbar />
-              <main className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1">
+              <main className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 flex-1">
                 <Overtime />
               </main>
             </div>
@@ -82,7 +82,7 @@ function AppRoutes() {
           <ProtectedRoute>
             <div className="min-h-screen bg-[#0A0A0A] font-sans text-zinc-100 selection:bg-indigo-500/30 flex flex-col antialiased">
               <Navbar />
-              <main className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1">
+              <main className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 flex-1">
                 <UsersPage />
               </main>
             </div>

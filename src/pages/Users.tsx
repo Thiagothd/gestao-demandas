@@ -161,10 +161,10 @@ export default function UsersPage() {
   const employees = users.filter(u => u.role === 'employee');
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Toast */}
       {toast && (
-        <div className={`fixed top-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border text-sm font-medium transition-all ${
+        <div className={`fixed top-4 right-4 left-4 sm:left-auto sm:top-6 sm:right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border text-sm font-medium transition-all ${
           toast.type === 'success'
             ? 'bg-green-500/10 border-green-500/30 text-green-400'
             : 'bg-red-500/10 border-red-500/30 text-red-400'
@@ -175,21 +175,23 @@ export default function UsersPage() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="p-1.5 sm:p-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl shrink-0">
             <Users className="w-5 h-5 text-indigo-400" />
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-zinc-100">Gerenciar Usuários</h1>
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-xl font-bold text-zinc-100 truncate">Gerenciar Usuários</h1>
             <p className="text-xs text-zinc-500">{users.length} usuário{users.length !== 1 ? 's' : ''} cadastrado{users.length !== 1 ? 's' : ''}</p>
           </div>
         </div>
         <button
           onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-xl transition-colors"
+          className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-xl transition-colors shrink-0"
         >
-          <Plus className="w-4 h-4" /> Novo Usuário
+          <Plus className="w-4 h-4" />
+          <span className="hidden sm:inline">Novo Usuário</span>
+          <span className="sm:hidden">Novo</span>
         </button>
       </div>
 
@@ -412,17 +414,17 @@ function UserRow({ user, onChangePassword, onChangeRole, onDelete }: {
   onDelete: () => void;
 }) {
   return (
-    <div className="flex items-center justify-between px-5 py-3 hover:bg-zinc-800/30 transition-colors group">
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-sm font-semibold text-indigo-400">
+    <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 hover:bg-zinc-800/30 transition-colors group">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="w-8 h-8 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-sm font-semibold text-indigo-400 shrink-0">
           {user.name.charAt(0).toUpperCase()}
         </div>
-        <div>
-          <p className="text-sm font-medium text-zinc-200">{user.name}</p>
-          <p className="text-xs text-zinc-500">{user.name.toLowerCase().replace(/\s+/g, '')}@sistema.local</p>
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-zinc-200 truncate">{user.name}</p>
+          <p className="text-xs text-zinc-500 truncate">{user.name.toLowerCase().replace(/\s+/g, '')}@sistema.local</p>
         </div>
       </div>
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">
         <button onClick={onChangePassword} title="Alterar senha"
           className="p-1.5 text-zinc-500 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-md transition-colors">
           <Key className="w-4 h-4" />

@@ -43,7 +43,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center p-4 selection:bg-indigo-500/30">
-      <div className="w-full max-w-md bg-[#111111] rounded-2xl shadow-xl border border-zinc-800/80 p-8">
+      <div className="w-full max-w-md bg-[#111111] rounded-2xl shadow-xl border border-zinc-800/80 p-6 sm:p-8">
         <div className="flex flex-col items-center mb-8">
           <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl shadow-sm mb-4">
             <LogIn className="w-8 h-8 text-indigo-400" />
